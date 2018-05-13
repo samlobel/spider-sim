@@ -83,7 +83,7 @@ class MPLWebDisplay(object):
                                        interval=1)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1800)
-        web_ani.save('./videos/v26_no_external_force_with_damping_no_azimuthal_force_no_azimuthal.mp4', writer=writer)
+        web_ani.save('./videos/v27_test.mp4', writer=writer)
         # plt.show()
         # plt.show()
 
@@ -108,11 +108,12 @@ if __name__ == '__main__':
                                                # stiffness_radial=20,
                                                stiffness_azimuthal=1,
                                                # stiffness_azimuthal=100, #ORIG
-                                               damping_coefficient=1.0,
+                                               # damping_coefficient=1.0,
+                                               damping_coefficient=0.0,
                                                # num_segments_per_radial=5, #ORIG
-                                               num_segments_per_radial=2, #ORIG
+                                               num_segments_per_radial=5, #ORIG
                                                # num_segments_per_azimuthal=5 #ORIG
-                                               num_segments_per_azimuthal=1
+                                               num_segments_per_azimuthal=5
                                            )
     from web_zoo import sine_oscillate_point
     # force_func = sine_oscillate_point(web.center_point, [0,0,1.0], max_force=100.0, period=10.0)
@@ -125,7 +126,7 @@ if __name__ == '__main__':
     #     return move_point_to_cosine(point, radius)
     # deform_web(web, func)
 
-    wd = MPLWebDisplay(web, steps_per_frame=25, frames_to_write=100, step_size=0.004, blit=True)
+    wd = MPLWebDisplay(web, steps_per_frame=25, frames_to_write=10, step_size=0.004, blit=True)
     # wd = MPLWebDisplay(web, steps_per_frame=100, frames_to_write=100)
     # wd.draw_web()
     wd.run()

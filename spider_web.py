@@ -63,15 +63,17 @@ class Node(object):
         This assumes that the acc refers to all EXTERNAL forces, and has been calculated. We still need
         to add in damping.
         """
+        if self.damping_coefficient:
+            self.acc -= (self.vel * self.damping_coefficient)
 
-        self.acc -= (self.vel * self.damping_coefficient)
         if self.update_method == 'euler':
             self._update_euler(timestep=timestep)
         else:
             self._update_symplectic(timestep=timestep)
 
     def _zero_acc(self):
-        self.acc[...] = np.zeros((3,), dtype=np.float32)
+        self.acc.fill(0)
+        # self.acc[...] = np.zeros((3,), dtype=np.float32)
 
 
 class Edge(object):
@@ -162,7 +164,7 @@ class Edge(object):
         #     print(edge_vector_norm)
         # edge_vector_norm = (np.sum(edge_vector**2))**0.5
 
-        scaling_constant = ((edge_vector_norm - self.rest_length) * self.spring_coefficient / (edge_vector_norm + 1e-8))
+        scaling_constant = ((edge_vector_norm - self.rest_length) * (self.spring_coefficient / (edge_vector_norm + 1e-8)))
         force = scaling_constant * edge_vector
 
 
@@ -195,8 +197,7 @@ class Edge(object):
     @property
     def edge_vector_norm(self):
         edge_vector = self.edge_vector
-        edge_vector_norm = (np.sum(edge_vector**2))**0.5
-        return edge_vector_norm
+        return LA.norm(edge_vector)
 
     # @property
     # def normalized_edge_vector(self):
