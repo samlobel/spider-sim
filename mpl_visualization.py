@@ -94,28 +94,8 @@ class MPLWebDisplay(object):
 if __name__ == '__main__':
     import web_zoo
     from web_zoo import square_web_with_z_offset_center
-    # web = web_zoo.radial_web(5, 10, 5, 5.0, 1.0, damping_coefficient=0.0)
     radius=10
-    # web = web_zoo.radial_web_stiffness_tension(radius=radius,
-    #                                            num_radial=20,
-    #                                            # num_azimuthal=10, #ORIG
-    #                                            num_azimuthal=10,
-    #                                            tension_radial=50,
-    #                                            # tension_radial=10,
-    #                                            tension_azimuthal=1,
-    #                                            # tension_azimuthal=50, #ORIG
-    #                                            stiffness_radial=100,
-    #                                            # stiffness_radial=20,
-    #                                            stiffness_azimuthal=1,
-    #                                            # stiffness_azimuthal=100, #ORIG
-    #                                            # damping_coefficient=1.0,
-    #                                            damping_coefficient=0.0,
-    #                                            # num_segments_per_radial=5, #ORIG
-    #                                            num_segments_per_radial=5, #ORIG
-    #                                            # num_segments_per_azimuthal=5 #ORIG
-    #                                            num_segments_per_azimuthal=5
-    #                                        )
-    web = web_zoo.radial_web(radius=10,
+    web = web_zoo.radial_web(radius=radius,
                              num_radial=20,
                              num_azimuthal=10,
                              stiffness_radial=0,
