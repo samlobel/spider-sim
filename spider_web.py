@@ -78,7 +78,14 @@ class Edge(object):
 
     NOTE: Set stiffness to 0 if you want rest_length to be zero... It just works out...
     """
-    def __init__(self, p1, p2, rest_length=None, spring_constant=None, tension=None, stiffness=None, edge_type=None):
+    def __init__(self,
+                 p1,
+                 p2,
+                 rest_length=None,
+                 spring_constant=None,
+                 stiffness=None,
+                 tension=None,
+                 edge_type=None):
         assert isinstance(p1, Node)
         assert isinstance(p2, Node)
         _validate_edge_type(edge_type)
@@ -91,13 +98,13 @@ class Edge(object):
             self._initialize_spring_constant(spring_constant, rest_length)
         if edge_type == 'stiffness_tension':
             assert stiffness is not None and tension is not None
-            self._initialize_tension_stiffness(tension, stiffness)
+            self._initialize_stiffness_tension(tension, stiffness)
 
     def _initialize_spring_constant(self, spring_constant, rest_length):
         self.spring_constant = spring_constant
         self.rest_length = rest_length
 
-    def _initialize_tension_stiffness(self, tension, stiffness):
+    def _initialize_stiffness_tension(self, tension, stiffness):
         starting_stretched_length = self.edge_vector_norm
         if stiffness == 0:
             self.rest_length = 0.0
@@ -154,55 +161,55 @@ class Edge(object):
         edge_vector = self.edge_vector
         return LA.norm(edge_vector)
 
-class EdgeOfMaterial(Edge):
-    """
-    A material can be defined by its stiffness. A spider probably puts a constant tension on a material
-    as it weaves.
-    """
-
-    def __init__(self, p1, tension=None, stiffness=None):
-        assert isinstance(p1, Node)
-        assert isinstance(p2, Node)
-        assert tension is not None
-        assert stiffness is not None
-        starting_stretched_length = self.edge_vector_norm
-        rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
-        spring_constant = (stiffness/rest_length)
-        self.rest_length = rest_length
-        self.spring_constant = spring_constant
-
-
-class EdgeOfMaterial(Edge):
-    def __init__(self, p1, p2, tension, stiffness):
-        self.p1 = p1
-        self.p2 = p2
-        starting_stretched_length = self.edge_vector_norm
-        rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
-        spring_constant = (stiffness/rest_length)
-        self.rest_length = rest_length
-        self.spring_constant = spring_constant
-        # print("Spring coefficient: {}".format(spring_constant))
-        # print("Rest Length: {}".format(rest_length))
-
-
-class ZeroRestLengthEdge(Edge):
-    """
-    This should be much faster to compute, for starters. How is it going to work? Well, we'll use
-    the starting length and starting tension to figure out a spring-constant. Then, we'll
-    be able to efficiently calculate where it goes
-    """
-    def __init__(self, p1, p2, tension=None):
-        assert tension is not None
-        self.p1 = p1
-        self.p2 = p2
-        self.rest_length = 0
-        starting_stretched_length = self.edge_vector_norm
-        self.spring_constant = (tension / starting_stretched_length)
-
-    def update_point_forces(self):
-        force = (self.edge_vector * self.spring_constant)
-        self.p1.acc += force
-        self.p2.acc -= force
+# class EdgeOfMaterial(Edge):
+#     """
+#     A material can be defined by its stiffness. A spider probably puts a constant tension on a material
+#     as it weaves.
+#     """
+#
+#     def __init__(self, p1, tension=None, stiffness=None):
+#         assert isinstance(p1, Node)
+#         assert isinstance(p2, Node)
+#         assert tension is not None
+#         assert stiffness is not None
+#         starting_stretched_length = self.edge_vector_norm
+#         rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
+#         spring_constant = (stiffness/rest_length)
+#         self.rest_length = rest_length
+#         self.spring_constant = spring_constant
+#
+#
+# class EdgeOfMaterial(Edge):
+#     def __init__(self, p1, p2, tension, stiffness):
+#         self.p1 = p1
+#         self.p2 = p2
+#         starting_stretched_length = self.edge_vector_norm
+#         rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
+#         spring_constant = (stiffness/rest_length)
+#         self.rest_length = rest_length
+#         self.spring_constant = spring_constant
+#         # print("Spring coefficient: {}".format(spring_constant))
+#         # print("Rest Length: {}".format(rest_length))
+#
+#
+# class ZeroRestLengthEdge(Edge):
+#     """
+#     This should be much faster to compute, for starters. How is it going to work? Well, we'll use
+#     the starting length and starting tension to figure out a spring-constant. Then, we'll
+#     be able to efficiently calculate where it goes
+#     """
+#     def __init__(self, p1, p2, tension=None):
+#         assert tension is not None
+#         self.p1 = p1
+#         self.p2 = p2
+#         self.rest_length = 0
+#         starting_stretched_length = self.edge_vector_norm
+#         self.spring_constant = (tension / starting_stretched_length)
+#
+#     def update_point_forces(self):
+#         force = (self.edge_vector * self.spring_constant)
+#         self.p1.acc += force
+#         self.p2.acc -= force
 
 
 
