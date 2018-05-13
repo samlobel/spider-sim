@@ -26,9 +26,7 @@ class Node(object):
                  starting_velocity,
                  mass=1.0,
                  damping_coefficient=0.0,
-                 pinned=False,
-                 update_method='symplectic_euler'):
-        assert update_method in ['euler', 'symplectic_euler']
+                 pinned=False):
         assert len(starting_point) == 3
         assert len(starting_velocity) == 3
         assert type(mass) == float
@@ -40,12 +38,6 @@ class Node(object):
         self.damping_coefficient=damping_coefficient
         self.pinned = pinned
         self.update_method = update_method
-
-    def _update_euler(self, timestep=1):
-        if not self.pinned:
-            self.loc += (self.vel * timestep)
-            self.vel += (self.acc * timestep)
-        self._zero_acc()
 
     def _update_symplectic(self, timestep=1):
         if not self.pinned:
@@ -63,132 +55,95 @@ class Node(object):
         This assumes that the acc refers to all EXTERNAL forces, and has been calculated. We still need
         to add in damping.
         """
-        if self.damping_coefficient:
-            self.acc -= (self.vel * self.damping_coefficient)
+        if not self.pinned:
+            if self.damping_coefficient:
+                self.acc -= (self.vel * self.damping_coefficient)
+            self.vel += (self.acc * timestep)
+            self.loc += (self.vel * timestep)
+        self._zero_acc()
 
-        if self.update_method == 'euler':
-            self._update_euler(timestep=timestep)
-        else:
-            self._update_symplectic(timestep=timestep)
 
     def _zero_acc(self):
         self.acc.fill(0)
         # self.acc[...] = np.zeros((3,), dtype=np.float32)
 
 
+def _validate_edge_type(edge_type):
+    assert edge_type is not None
+    assert edge_type in ['spring_constant', 'stiffness_tension']
+
 class Edge(object):
-    def __init__(self, p1, p2, rest_length=0.0, spring_coefficient=1.0):
+    """
+    The basic edge object. Can update its point's forces based on its stretchiness.
+
+    NOTE: Set stiffness to 0 if you want rest_length to be zero... It just works out...
+    """
+    def __init__(self, p1, p2, rest_length=None, spring_constant=None, tension=None, stiffness=None, edge_type=None):
         assert isinstance(p1, Node)
         assert isinstance(p2, Node)
-        assert isinstance(rest_length, float)
-        assert isinstance(spring_coefficient, float)
+        _validate_edge_type(edge_type)
+
         self.p1 = p1
         self.p2 = p2
-        self.spring_coefficient = spring_coefficient
+
+        if edge_type == 'spring_constant':
+            assert spring_constant is not None and rest_length is not None
+            self._initialize_spring_constant(spring_constant, rest_length)
+        if edge_type == 'stiffness_tension':
+            assert stiffness is not None and tension is not None
+            self._initialize_tension_stiffness(tension, stiffness)
+
+    def _initialize_spring_constant(self, spring_constant, rest_length):
+        self.spring_constant = spring_constant
         self.rest_length = rest_length
 
-    def initialize_from_tension_and_stiffness(self, p1, p2, tension, stiffness):
+    def _initialize_tension_stiffness(self, tension, stiffness):
+        starting_stretched_length = self.edge_vector_norm
+        if stiffness == 0:
+            self.rest_length = 0.0
+            self.spring_constant = (tension / starting_stretched_length)
+        else:
+            self.rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #TODO: Proof???
+            self.spring_constant = (tension / (starting_stretched_length - self.rest_length)) #Pretty clear.
+
+    def _update_point_forces_zero_rest_length(self):
         """
-        NOTE: I actually think this should be a subclass of Edge... It should just overwrite the constructor.
-        NOTE: Another word for stiffness is Elastic Modulus.
-        Tension:
-            It's how much force it has when it's attached to the two points.
-        Stiffness:
-            I don't know exactly. I'm thinking something like, how much force you would get
-            per unit stretch, if it were unit length. Because if it were half the length then half the
-            stretching makes it the same force.
-
-        Here's an interesting thing: If something is length 1, and you stretch it to 2, you get force F.
-        If it's length 2, you stretch it to 4 to get the same force.
-        Let's say stiffness is the amount you have to multiply it by to get force 1. That's a good def.
-        No, it isn't. Bigger stiffness should mean less multiplying... Maybe it should be the amount you
-        need to divide by to get the rest length. Does that make sense?
-
-        The point is, I need a quantity that's invariant to length. Spring constant isn't.
-        SC/RL is.
-
-        Let's call stiffness = SF = SC*RL. When SC doubles, SF doubles.
-            If SC were to stay the same but RL doubled, that means SF doubles.
-        Also, SC = SF/RL
-        Then, if we have tension=T, and stretch length = SL:
-        We know T = (SL-RL)*SC = (SL-RL)*(SF/RL).
-        T = (SL*SF/RL) - SF
-        T + SF = SL*SF/RL
-        (T+SF)/(SL*SF)=(1/RL)
-        RL=(SL*SF)/(T+SF)
-
-        One more time:
-
-        And, I have a formula for tension as well... T = (SL - RL) * (SF / RL)
-
-        T = (SL - RL) * SC => T = (SL - RL) * (SF / RL) => T = (SL*SF/RL) - SF =>
-        T + SF = (SF*SL/RL) => (T + SF) / (SF * SL) = (1/RL) =>
-        RL = (SF*SL)/ (T + SF).
-        So, lets say p1 and p2 are 1 apart. And tension is 1, and stiffness is 2. That means you need to
-        multiply the length by 2 to get the tension. Meaning that the rest length is 0.1
-
-        If they're 1 apart, tension is 1, stiffness is 3. That means that you need to mul
+        if rest-length is zero, the computation becomes much quicker.
+        FORCE = (edge_vector * spring_constant) is all you need to do.
         """
-
-
-    def update_point_forces(self):
-        """
-        One way to do this: Get the magnitude of the force, multiply it by the direction of the force.
-        Direction of the force will be: -kX.
-
-        So, you get the vector. And then it's always pulling, so the force always goes in the opposite
-        direction.
-
-        This is isn't right when it gets short...
-
-        Somehow, we need to work this out a bit better.
-
-        I should redirect the rest-length in the direction of the real edge. That makes sense.
-
-        """
-
-        # you know the rest-length. You know how long the edge-vector norm is.
-        # edge_vector_norm - rest_length is stretched distance.
-        # force = Stretched distance * spring_coefficient * edge_vector / edge_vector_norm
-        # Force = ((edge_vector_norm - rest_length) * spring_coefficient / edge_vector_norm) * edge_vector
-
-        # I guess the real thing is that it's just too weird for it to compress past zero. Why is it doing that in
-        # the first place?
-
-        # First, you get the direction of the force. That's the normalized edge_vector.
-        edge_vector = self.edge_vector
-        edge_vector_norm = LA.norm(edge_vector)
-        # if edge_vector_norm < 0.001:
-        #     print('boom')
-        #     import ipdb; ipdb.set_trace()
-        #     print(edge_vector_norm)
-        # edge_vector_norm = (np.sum(edge_vector**2))**0.5
-
-        scaling_constant = ((edge_vector_norm - self.rest_length) * (self.spring_coefficient / (edge_vector_norm + 1e-8)))
-        force = scaling_constant * edge_vector
-
-
-        # edge_vector = self.edge_vector
-        # edge_vector_norm = (np.sum(edge_vector**2))**0.5
-        # normalized_edge_vector = edge_vector / edge_vector_norm #Direction...
-        # rest_length_vector = normalized_edge_vector*self.rest_length
-        # vector_diff = edge_vector - rest_length_vector
-        # force = vector_diff * self.spring_coefficient
-
-
-
-        # # Then, you get the amount that it stretches. That's the length, minus the rest-length.
-        # length_diff = edge_vector_norm - self.rest_length
-        # print(length_diff)
-        # # To get the magnitude of the force, you do length_diff*spring_coefficient
-        # force_magnitude = self.spring_coefficient * length_diff
-        # force = normalized_edge_vector * force_magnitude
-
-        # If p1=[0,0,0], p2=[1,0,0], and rl=0, then force will point right. But, we need a negative
-        # sign in there. It's going to pull both towards the center. It should add the force to p1
-        # and subtract it from p2. That's right.
+        force = (self.edge_vector * self.spring_constant)
         self.p1.acc += force
         self.p2.acc -= force
+
+    def _update_point_forces_with_rest_length(self):
+        """
+
+        The starting formula is (edge_vector - rest_vector)  * spring_constant. But we don't know
+        rest_vector, only rest_length. So, this is equivalent to
+
+        FORCE = (edge_vector - (rest_length * normalized_edge_vector)) * spring_constant ==
+        normalized_edge_vector * (edge_vector_norm - rest_length) * spring_constant ==
+        (edge_vector / edge_vector_norm) * (edge_vector_norm - rest_length) * spring_constant ==
+        (edge_vector) * ((edge_vector_norm - rest_length) * spring_constant / edge_vector_norm)
+
+        This formulation only requires taking the norm once, and has the fewest vector algebra
+        steps.
+        """
+
+        edge_vector = self.edge_vector
+        edge_vector_norm = LA.norm(edge_vector)
+        scaling_constant = ((edge_vector_norm - self.rest_length) * (self.spring_constant / (edge_vector_norm + 1e-8)))
+        force = scaling_constant * edge_vector
+
+        self.p1.acc += force
+        self.p2.acc -= force
+
+    def update_point_forces(self):
+        if sef.rest_length:
+            self._update_point_forces_with_rest_length()
+        else:
+            self._update_point_forces_zero_rest_length()
+
 
     @property
     def edge_vector(self):
@@ -199,12 +154,23 @@ class Edge(object):
         edge_vector = self.edge_vector
         return LA.norm(edge_vector)
 
-    # @property
-    # def normalized_edge_vector(self):
-    #     edge_vector = self.edge_vector
-    #     edge_vector_norm = (np.sum(edge_vector**2))**0.5
-    #     normalized_edge_vector = edge_vector / edge_vector_norm
-    #     return normalized_edge_vector
+class EdgeOfMaterial(Edge):
+    """
+    A material can be defined by its stiffness. A spider probably puts a constant tension on a material
+    as it weaves.
+    """
+
+    def __init__(self, p1, tension=None, stiffness=None):
+        assert isinstance(p1, Node)
+        assert isinstance(p2, Node)
+        assert tension is not None
+        assert stiffness is not None
+        starting_stretched_length = self.edge_vector_norm
+        rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
+        spring_constant = (stiffness/rest_length)
+        self.rest_length = rest_length
+        self.spring_constant = spring_constant
+
 
 class EdgeOfMaterial(Edge):
     def __init__(self, p1, p2, tension, stiffness):
@@ -212,13 +178,31 @@ class EdgeOfMaterial(Edge):
         self.p2 = p2
         starting_stretched_length = self.edge_vector_norm
         rest_length = (stiffness*starting_stretched_length) / (tension + stiffness) #Do the units even work?! I think so actually.
-        spring_coefficient = (stiffness/rest_length)
+        spring_constant = (stiffness/rest_length)
         self.rest_length = rest_length
-        self.spring_coefficient = spring_coefficient
-        # print("Spring coefficient: {}".format(spring_coefficient))
+        self.spring_constant = spring_constant
+        # print("Spring coefficient: {}".format(spring_constant))
         # print("Rest Length: {}".format(rest_length))
 
 
+class ZeroRestLengthEdge(Edge):
+    """
+    This should be much faster to compute, for starters. How is it going to work? Well, we'll use
+    the starting length and starting tension to figure out a spring-constant. Then, we'll
+    be able to efficiently calculate where it goes
+    """
+    def __init__(self, p1, p2, tension=None):
+        assert tension is not None
+        self.p1 = p1
+        self.p2 = p2
+        self.rest_length = 0
+        starting_stretched_length = self.edge_vector_norm
+        self.spring_constant = (tension / starting_stretched_length)
+
+    def update_point_forces(self):
+        force = (self.edge_vector * self.spring_constant)
+        self.p1.acc += force
+        self.p2.acc -= force
 
 
 
