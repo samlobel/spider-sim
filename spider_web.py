@@ -13,6 +13,7 @@ Or, just using the average acceleration might do it too.
 
 
 import numpy as np
+from numpy import linalg as LA
 
 class Node(object):
     """
@@ -144,16 +145,36 @@ class Edge(object):
 
         """
 
+        # you know the rest-length. You know how long the edge-vector norm is.
+        # edge_vector_norm - rest_length is stretched distance.
+        # force = Stretched distance * spring_coefficient * edge_vector / edge_vector_norm
+        # Force = ((edge_vector_norm - rest_length) * spring_coefficient / edge_vector_norm) * edge_vector
+
         # I guess the real thing is that it's just too weird for it to compress past zero. Why is it doing that in
         # the first place?
 
         # First, you get the direction of the force. That's the normalized edge_vector.
         edge_vector = self.edge_vector
-        edge_vector_norm = (np.sum(edge_vector**2))**0.5
-        normalized_edge_vector = edge_vector / edge_vector_norm #Direction...
-        rest_length_vector = normalized_edge_vector*self.rest_length
-        vector_diff = edge_vector - rest_length_vector
-        force = vector_diff * self.spring_coefficient
+        edge_vector_norm = LA.norm(edge_vector)
+        # if edge_vector_norm < 0.001:
+        #     print('boom')
+        #     import ipdb; ipdb.set_trace()
+        #     print(edge_vector_norm)
+        # edge_vector_norm = (np.sum(edge_vector**2))**0.5
+
+        scaling_constant = ((edge_vector_norm - self.rest_length) * self.spring_coefficient / (edge_vector_norm + 1e-8))
+        force = scaling_constant * edge_vector
+
+
+        # edge_vector = self.edge_vector
+        # edge_vector_norm = (np.sum(edge_vector**2))**0.5
+        # normalized_edge_vector = edge_vector / edge_vector_norm #Direction...
+        # rest_length_vector = normalized_edge_vector*self.rest_length
+        # vector_diff = edge_vector - rest_length_vector
+        # force = vector_diff * self.spring_coefficient
+
+
+
         # # Then, you get the amount that it stretches. That's the length, minus the rest-length.
         # length_diff = edge_vector_norm - self.rest_length
         # print(length_diff)
@@ -193,8 +214,8 @@ class EdgeOfMaterial(Edge):
         spring_coefficient = (stiffness/rest_length)
         self.rest_length = rest_length
         self.spring_coefficient = spring_coefficient
-        print("Spring coefficient: {}".format(spring_coefficient))
-        print("Rest Length: {}".format(rest_length))
+        # print("Spring coefficient: {}".format(spring_coefficient))
+        # print("Rest Length: {}".format(rest_length))
 
 
 
@@ -209,6 +230,8 @@ class Web(object):
         """
         self.edge_set = set(edges)
         self.point_set = self._collect_points()
+        self.edge_list = list(self.edge_set)
+        self.point_list = list(self.point_set)
         self.num_steps = 0
         self.force_func = force_func
         pass
