@@ -83,7 +83,7 @@ class MPLWebDisplay(object):
                                        interval=1)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1800)
-        web_ani.save('./videos/v27_test.mp4', writer=writer)
+        web_ani.save('./videos/v28.mp4', writer=writer)
         # plt.show()
         # plt.show()
 
@@ -96,28 +96,40 @@ if __name__ == '__main__':
     from web_zoo import square_web_with_z_offset_center
     # web = web_zoo.radial_web(5, 10, 5, 5.0, 1.0, damping_coefficient=0.0)
     radius=10
-    web = web_zoo.radial_web_tension_stiffness(radius=radius,
-                                               num_radial=20,
-                                               # num_azimuthal=10, #ORIG
-                                               num_azimuthal=10,
-                                               tension_radial=50,
-                                               # tension_radial=10,
-                                               tension_azimuthal=1,
-                                               # tension_azimuthal=50, #ORIG
-                                               stiffness_radial=100,
-                                               # stiffness_radial=20,
-                                               stiffness_azimuthal=1,
-                                               # stiffness_azimuthal=100, #ORIG
-                                               # damping_coefficient=1.0,
-                                               damping_coefficient=0.0,
-                                               # num_segments_per_radial=5, #ORIG
-                                               num_segments_per_radial=5, #ORIG
-                                               # num_segments_per_azimuthal=5 #ORIG
-                                               num_segments_per_azimuthal=5
-                                           )
+    # web = web_zoo.radial_web_stiffness_tension(radius=radius,
+    #                                            num_radial=20,
+    #                                            # num_azimuthal=10, #ORIG
+    #                                            num_azimuthal=10,
+    #                                            tension_radial=50,
+    #                                            # tension_radial=10,
+    #                                            tension_azimuthal=1,
+    #                                            # tension_azimuthal=50, #ORIG
+    #                                            stiffness_radial=100,
+    #                                            # stiffness_radial=20,
+    #                                            stiffness_azimuthal=1,
+    #                                            # stiffness_azimuthal=100, #ORIG
+    #                                            # damping_coefficient=1.0,
+    #                                            damping_coefficient=0.0,
+    #                                            # num_segments_per_radial=5, #ORIG
+    #                                            num_segments_per_radial=5, #ORIG
+    #                                            # num_segments_per_azimuthal=5 #ORIG
+    #                                            num_segments_per_azimuthal=5
+    #                                        )
+    web = web_zoo.radial_web(radius=10,
+                             num_radial=20,
+                             num_azimuthal=10,
+                             stiffness_radial=0,
+                             tension_radial=10,
+                             stiffness_azimuthal=0,
+                             tension_azimuthal=1,
+                             damping_coefficient=0.05,
+                             edge_type='stiffness_tension',
+                             num_segments_per_radial=5,
+                             num_segments_per_azimuthal=5,
+                            )
     from web_zoo import sine_oscillate_point
-    # force_func = sine_oscillate_point(web.center_point, [0,0,1.0], max_force=100.0, period=10.0)
-    # web.force_func = force_func
+    force_func = sine_oscillate_point(web.center_point, [0,0,1.0], max_force=10.0, period=15.0)
+    web.force_func = force_func
     # force_func = sine_oscillate_point(web.center_point, [0,1.0,0.0], max_force=100.0, period=10.0)
     # web.force_func = force_func
 
@@ -126,7 +138,7 @@ if __name__ == '__main__':
     #     return move_point_to_cosine(point, radius)
     # deform_web(web, func)
 
-    wd = MPLWebDisplay(web, steps_per_frame=25, frames_to_write=10, step_size=0.004, blit=True)
+    wd = MPLWebDisplay(web, steps_per_frame=50, frames_to_write=1000, step_size=0.004, blit=True)
     # wd = MPLWebDisplay(web, steps_per_frame=100, frames_to_write=100)
     # wd.draw_web()
     wd.run()

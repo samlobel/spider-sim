@@ -1,7 +1,8 @@
 import math
 import random
 import numpy as np
-from spider_web import Node, Edge, Web, EdgeOfMaterial
+from spider_web import Node, Edge, Web
+# from spider_web import EdgeOfMaterial
 
 
 def square_web_with_offset_center():
@@ -64,18 +65,6 @@ def wiggle_line(num_points=6, length=5):
     web = Web(edges)
     return web
 
-
-# def nodes_edges_around_circle(num_points, rad_circle, spr_c, pinned=False, damping_coefficient=0.0):
-#     points = []
-#     for i in range(num_points):
-#         radians = 2*(math.pi)*(i / num_points)
-#         x = rad_circle*math.cos(radians)
-#         y = rad_circle*math.sin(radians)
-#         points.append(Node([x,y,0.0],[0,0,0], pinned=pinned, damping_coefficient=damping_coefficient))
-#
-#     edges = [Edge(points[i], points[(i+1)%num_points], spring_constant=5.0) for i in range(num_points)]
-#     return points, edges
-
 def connect_points_with_stiffness_tension(list_of_points, stiffness=None, tension=None, complete_circle=False):
     assert stiffness is not None
     assert tension is not None
@@ -90,9 +79,12 @@ def connect_points_with_stiffness_tension(list_of_points, stiffness=None, tensio
         edges.append(EdgeOfMaterial(list_of_points[-1], list_of_points[0], stiffness=stiffness, tension=tension))
     return edges
 
-def nodes_around_circle(num_points=None, num_segments_per_line=None, pinned=False, damping_coefficient=0.0):
-    assert num_points is not None
-    assert num_segments_per_line is not None
+def nodes_around_circle(num_points=None,
+                        rad_circle=None,
+                        num_segments_per_line=None,
+                        pinned=False,
+                        damping_coefficient=0.0):
+    assert None not in [num_points, rad_circle, num_segments_per_line]
     points = []
     for i in range(num_points):
         radians = 2*(math.pi)*(i / num_points)
@@ -140,7 +132,7 @@ def connect_points(list_of_points,
         edges.append(edge)
 
     if complete_circle:
-        edge = Edge(list_of_points[-1], list_of_points[0]
+        edge = Edge(list_of_points[-1], list_of_points[0],
                     rest_length=rest_length,
                     spring_constant=spring_constant,
                     stiffness=stiffness,
@@ -158,7 +150,7 @@ def nodes_edges_around_circle(num_points=None,
                               edge_type=None,
                               pinned=False,
                               num_segments_per_line=None,
-                              damping_coefficient=0.0)
+                              damping_coefficient=0.0):
     # Input Validation.
     assert None not in [num_points, rad_circle, num_segments_per_line, edge_type]
 
@@ -169,6 +161,7 @@ def nodes_edges_around_circle(num_points=None,
         assert stiffness is not None and tension is not None
 
     points = nodes_around_circle(num_points=num_points,
+                                 rad_circle=rad_circle,
                                  num_segments_per_line=num_segments_per_line,
                                  pinned=pinned,
                                  damping_coefficient=damping_coefficient)
@@ -208,7 +201,7 @@ def connect_two_circles(c1, c2,
         for j in range(1, num_segments_per_line):
             pos = p1.loc + ((p2.loc - p1.loc) * (j / num_segments_per_line))
             pos = pos.tolist()
-            points.append(pos, [0,0,0], pinned=False, damping_coefficient=damping_coefficient)
+            points.append(Node(pos, [0,0,0], pinned=False, damping_coefficient=damping_coefficient))
         points.append(p2)
 
         new_edges = connect_points(points,
@@ -357,9 +350,36 @@ def radial_web(radius=None,
     list_of_circle_points = []
     list_of_circle_points.append(center_degen_circle)
     for i in range(1, num_azimuthal):
+        # These set up the circles, not the lines
         pinned = (i==(num_azimuthal-1)) #Pins only the last layer...
-        ps, es = nodes_edges_around_circle()
-    pass
+        ps, es = nodes_edges_around_circle(num_points=num_radial,
+                                           rad_circle=(radius * (i/num_azimuthal)),
+                                           rest_length=rest_length_azimuthal,
+                                           spring_constant=spring_constant_azimuthal,
+                                           stiffness=stiffness_azimuthal,
+                                           tension=tension_azimuthal,
+                                           pinned=pinned,
+                                           edge_type=edge_type,
+                                           damping_coefficient=damping_coefficient,
+                                           num_segments_per_line=num_segments_per_azimuthal
+                                          )
+        edges.extend(es)
+        list_of_circle_points.append(ps)
+
+    for j in range(len(list_of_circle_points)-1):
+        ce = connect_two_circles(list_of_circle_points[j], list_of_circle_points[j+1],
+                                 rest_length=rest_length_radial,
+                                 spring_constant=spring_constant_radial,
+                                 tension=tension_radial,
+                                 stiffness=stiffness_radial,
+                                 edge_type=edge_type,
+                                 damping_coefficient=damping_coefficient,
+                                 connect_every=num_segments_per_azimuthal,
+                                 num_segments_per_line=num_segments_per_radial)
+        edges.extend(ce)
+    web = Web(edges, center_point=center_point)
+    return web
+
 
 
 def radial_web_stiffness_tension(radius,

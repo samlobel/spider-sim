@@ -37,13 +37,6 @@ class Node(object):
         self.mass = mass
         self.damping_coefficient=damping_coefficient
         self.pinned = pinned
-        self.update_method = update_method
-
-    def _update_symplectic(self, timestep=1):
-        if not self.pinned:
-            self.vel += (self.acc * timestep)
-            self.loc += (self.vel * timestep)
-        self._zero_acc()
 
     def update_loc_vel(self, timestep=1):
         """
@@ -146,7 +139,7 @@ class Edge(object):
         self.p2.acc -= force
 
     def update_point_forces(self):
-        if sef.rest_length:
+        if self.rest_length:
             self._update_point_forces_with_rest_length()
         else:
             self._update_point_forces_zero_rest_length()
@@ -215,7 +208,7 @@ class Edge(object):
 
 
 class Web(object):
-    def __init__(self, edges, force_func=None):
+    def __init__(self, edges, force_func=None, center_point=None):
         """
         Force func is something that applies a force. For example,
         a bug that's trapped, or an oscillator in the center.
@@ -226,6 +219,7 @@ class Web(object):
         self.point_list = list(self.point_set)
         self.num_steps = 0
         self.force_func = force_func
+        self.center_point = center_point
         pass
 
     def step(self, timestep=1.0):
