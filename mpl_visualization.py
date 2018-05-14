@@ -6,13 +6,14 @@ import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 
 class MPLWebDisplay(object):
-    def __init__(self, web, steps_per_frame=100, frames_to_write=100, step_size=0.001, blit=True):
+    def __init__(self, web, steps_per_frame=100, frames_to_write=100, step_size=0.001, blit=True, start_drawing_at=0.0):
         self.web = web
         self.edges = list(web.edge_set)
         self.step_size = step_size
         self.steps_per_frame = steps_per_frame
         self.frames_to_write = frames_to_write
         self.blit = blit
+        self.start_drawing_at = start_drawing_at
         self.set_up_3d_figure()
 
     def set_up_3d_figure(self):
@@ -75,6 +76,11 @@ class MPLWebDisplay(object):
 
     def run(self):
         draw_func = self.draw_lines_blit if self.blit else self.draw_web
+        print("Pausing while we get drawing where it needs to be")
+        while self.web.num_steps < self.start_drawing_at:
+            self.web.step(self.step_size)
+        print("Now drawing again, we skipped ahead to time {}".format(self.web.num_steps))
+
         web_ani = animation.FuncAnimation(self.fig,
                                        # self.draw_lines_blit,
                                        draw_func,
@@ -83,7 +89,7 @@ class MPLWebDisplay(object):
                                        interval=1)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1800)
-        web_ani.save('./videos/v28.mp4', writer=writer)
+        web_ani.save('./videos/impulse_off_center.mp4', writer=writer)
         # plt.show()
         # plt.show()
 
@@ -99,18 +105,27 @@ if __name__ == '__main__':
                              num_radial=20,
                              num_azimuthal=10,
                              stiffness_radial=0,
-                             tension_radial=10,
-                             stiffness_azimuthal=0,
-                             tension_azimuthal=1,
-                             damping_coefficient=0.05,
+                             tension_radial=300,
+                             stiffness_azimuthal=90,
+                             tension_azimuthal=30,
+                             damping_coefficient=0.1,
                              edge_type='stiffness_tension',
-                             num_segments_per_radial=5,
+                             num_segments_per_radial=2,
                              num_segments_per_azimuthal=5,
                             )
-    from web_zoo import sine_oscillate_point
-    force_func = sine_oscillate_point(web.center_point, [0,0,1.0], max_force=10.0, period=15.0)
+
+    from web_zoo import sine_oscillate_point, force_point_to_sine
+    # movement_func = force_point_to_sine(web.center_point,
+    #                                     direction_vector=[0.0, 0.0, 1.0],
+    #                                     amplitude=3.0,
+    #                                     period=8.0, delay=2.0)
+    # web.movement_func = movement_func
+    off_center_point = list(filter(lambda p : p.loc[0] == 5.0, web.point_set))[0]
+    # force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=750.0, delay=3.0)
+    # web.force_func = force_func
+    force_func = web_zoo.impulse_to_point(off_center_point, [0,0,1.0], force=2000, force_time=0.5, delay=3.0)
     web.force_func = force_func
-    # force_func = sine_oscillate_point(web.center_point, [0,1.0,0.0], max_force=100.0, period=10.0)
+    # force_func = sine_oscillate_point(web.center_point, [0,0,1.0], max_force=750.0, period=8.0, delay=2.0)
     # web.force_func = force_func
 
     # from web_zoo import deform_web, move_point_to_cosine
@@ -118,7 +133,8 @@ if __name__ == '__main__':
     #     return move_point_to_cosine(point, radius)
     # deform_web(web, func)
 
-    wd = MPLWebDisplay(web, steps_per_frame=50, frames_to_write=1000, step_size=0.004, blit=True)
+    # wd = MPLWebDisplay(web, steps_per_frame=50, frames_to_write=100, step_size=0.002, blit=True)
+    wd = MPLWebDisplay(web, steps_per_frame=25, frames_to_write=1000, step_size=0.002, blit=True, start_drawing_at=3.0)
     # wd = MPLWebDisplay(web, steps_per_frame=100, frames_to_write=100)
     # wd.draw_web()
     wd.run()

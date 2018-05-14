@@ -326,13 +326,29 @@ def random_from_sphere():
             continue
 
 
-def sine_oscillate_point(point, direction_vector=[0.0, 0, 0.1], max_force=0.0, period=1.0):
+def force_point_to_sine(point, direction_vector=[0.0, 0.0, 1.0], amplitude=0.0, period=1.0, delay=0.0):
+    """
+    Badly named. It forces it to move to sine, it doesn't apply a force.
+    """
+    def function_of_concern(timestep):
+        timestep = max(timestep - delay, 0)
+        _direction_vector = np.asarray(direction_vector)
+        assert _direction_vector.shape == (3,)
+        phase = (2*math.pi*timestep) / period
+        sined_phase = math.sin(phase)
+        new_pos = _direction_vector * (sined_phase * amplitude)
+        point.loc[...] = new_pos
+
+    return function_of_concern
+
+def sine_oscillate_point(point, direction_vector=[0.0, 0, 1.0], max_force=0.0, period=1.0, delay=0.0):
     """
     Period is the number of timesteps that elapse before it repeats itself.
 
     This returns a function, that is just dependent on timestep...
     """
     def function_of_concern(timestep):
+        timestep = max(timestep - delay, 0)
         # TODO: Normalize direction vector...
         _direction_vector = np.asarray(direction_vector)
         assert _direction_vector.shape == (3,)
@@ -346,10 +362,13 @@ def sine_oscillate_point(point, direction_vector=[0.0, 0, 0.1], max_force=0.0, p
     return function_of_concern
 
 
-def random_oscillate_point_one_dimension(point, direction_vector=[1.0,0,0], max_force=0.0):
+
+def random_oscillate_point_one_dimension(point, direction_vector=[1.0,0,0], max_force=0.0, delay=0.0):
     # Random force, From uniform distribution, -1 to 1.
-    def function_of_concern(*args):
+    def function_of_concern(timestep):
         # TODO: Normalize direction vector...
+        if timestep < delay:
+            return
         _direction_vector = np.asarray(direction_vector)
         assert _direction_vector.shape == (3,)
         random_range = 2*(random.random() - 0.5)
@@ -369,6 +388,21 @@ def random_oscillate_point_three_dimensions(point, max_force=0.0):
         # print(random_range)
         rand_force = random_range * max_force
         force_vector = max_force * rand_force
+        point.acc += force_vector
+
+    return function_of_concern
+
+def impulse_to_point(point, direction_vector=[0,0,1.0], force=0.0, force_time=0.0, delay=0.0):
+    def function_of_concern(timestep):
+        shifted_timestep = timestep - delay
+        if shifted_timestep < 0:
+            return
+        if shifted_timestep > force_time:
+            return
+
+        _direction_vector = np.asarray(direction_vector)
+        assert _direction_vector.shape == (3,)
+        force_vector = _direction_vector * force
         point.acc += force_vector
 
     return function_of_concern

@@ -70,6 +70,9 @@ class Edge(object):
     The basic edge object. Can update its point's forces based on its stretchiness.
 
     NOTE: Set stiffness to 0 if you want rest_length to be zero... It just works out...
+
+    Setting stiffness==tension means that it starts stretched twice as far as it would have been.
+    Setting stiffness==3*tension means that its rest length is 3/4 the original length.
     """
     def __init__(self,
                  p1,
@@ -85,7 +88,7 @@ class Edge(object):
 
         self.p1 = p1
         self.p2 = p2
-
+        self.both_pinned = self.p1.pinned and self.p2.pinned
         if edge_type == 'spring_constant':
             assert spring_constant is not None and rest_length is not None
             self._initialize_spring_constant(spring_constant, rest_length)
@@ -139,6 +142,8 @@ class Edge(object):
         self.p2.acc -= force
 
     def update_point_forces(self):
+        if self.both_pinned:
+            return
         if self.rest_length:
             self._update_point_forces_with_rest_length()
         else:
@@ -208,7 +213,7 @@ class Edge(object):
 
 
 class Web(object):
-    def __init__(self, edges, force_func=None, center_point=None):
+    def __init__(self, edges, force_func=None, movement_func=None, center_point=None):
         """
         Force func is something that applies a force. For example,
         a bug that's trapped, or an oscillator in the center.
@@ -219,6 +224,7 @@ class Web(object):
         self.point_list = list(self.point_set)
         self.num_steps = 0
         self.force_func = force_func
+        self.movement_func = movement_func
         self.center_point = center_point
         pass
 
@@ -236,6 +242,9 @@ class Web(object):
 
         for p in self.point_set:
             p.update_loc_vel(timestep=timestep)
+
+        if self.movement_func is not None:
+            self.movement_func(self.num_steps)
 
     def _collect_points(self):
         point_set = set([])
