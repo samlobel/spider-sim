@@ -26,7 +26,8 @@ class Node(object):
                  starting_velocity,
                  mass=1.0,
                  damping_coefficient=0.0,
-                 pinned=False):
+                 pinned=False,
+                 **kwargs):
         assert len(starting_point) == 3
         assert len(starting_velocity) == 3
         assert type(mass) == float
@@ -37,6 +38,11 @@ class Node(object):
         self.mass = mass
         self.damping_coefficient=damping_coefficient
         self.pinned = pinned
+
+        # Now, set all KWARGS to the right values.
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     def update_loc_vel(self, timestep=1):
         """

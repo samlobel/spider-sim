@@ -87,13 +87,13 @@ def nodes_around_circle(num_points=None,
 
         x = rad_circle*math.cos(radians)
         y = rad_circle*math.sin(radians)
-        points.append(Node([x,y,0.0],[0,0,0], pinned=pinned, damping_coefficient=damping_coefficient))
+        points.append(Node([x,y,0.0],[0,0,0], pinned=pinned, damping_coefficient=damping_coefficient, intersection=True))
 
         next_x = rad_circle*math.cos(next_radians)
         next_y = rad_circle*math.sin(next_radians)
         for i in range(1, num_segments_per_line):
             pos = [x + (next_x-x)*(i/num_segments_per_line), y + (next_y-y)*(i/num_segments_per_line), 0]
-            points.append(Node(pos, [0,0,0], pinned=pinned, damping_coefficient=damping_coefficient))
+            points.append(Node(pos, [0,0,0], pinned=pinned, damping_coefficient=damping_coefficient, intersection=False))
     return points
 
 
@@ -104,14 +104,64 @@ def connect_points(list_of_points,
                    tension=None,
                    edge_type=None,
                    complete_circle=False,
+                   connect_points_with=None
                   ):
+    """
+    I'm still trying to figure out the best way to do this... At the moment, I think I should
+    have connect_points always have a list_of_points that are center-out, or clockwise.
+
+    Then, I scan through for intersection points.
+
+    The first one, it's before will be itself to start. The last one, its after will be itself.
+    If it's complete circle, that'll be overwritten.
+
+    But, what's the implications? For example, if my guy is on the edge, and he moves right, what happens?
+    That's actually perfect. It'll just stay still.
+
+    So, if the first point doesn't have a before, I set it to itself. If it does, I don't!
+    Same thing with the last point, pretty much.
+    """
+
     assert len(list_of_points) > 1
     assert edge_type in ['spring_constant', 'stiffness_tension']
+    assert connect_points_with in [None, 'radial', 'azimuthal']
 
     edges = []
+
+    if connect_points_with is not None:
+        most_recent_intersection = list_of_points[0]
+        assert most_recent_intersection.intersection == True
+        if connect_points_with == 'radial':
+            if not hasattr(most_recent_intersection, 'radial_before'):
+                most_recent_intersection.radial_before = most_recent_intersection
+            if not hasattr(most_recent_intersection, 'radial_after'):
+                most_recent_intersection.radial_after = most_recent_intersection
+        if connect_points_with == 'azimuthal':
+            if not hasattr(most_recent_intersection, 'azimuthal_before'):
+                most_recent_intersection.azimuthal_before = most_recent_intersection
+            if not hasattr(most_recent_intersection, 'azimuthal_after'):
+                most_recent_intersection.azimuthal_after = most_recent_intersection
+
     for i in range(len(list_of_points) - 1):
         p1 = list_of_points[i]
         p2 = list_of_points[i+1]
+
+        if connect_points_with is not None:
+            if p2.intersection == True:
+                if connect_points_with == 'radial':
+                    p2.radial_before = most_recent_intersection
+                    most_recent_intersection.radial_after = p2
+                    if not hasattr(p2, 'radial_after'):
+                        p2.radial_after = p2
+                    p2.radial_after = p2 # This will get overwritten if there's another, and won't if there isn't
+                    most_recent_intersection = p2
+                elif connect_points_with == 'azimuthal':
+                    p2.azimuthal_before = most_recent_intersection
+                    most_recent_intersection.azimuthal_after = p2
+                    if not hasattr(p2, 'azimuthal_after'):
+                        p2.azimuthal_after = p2
+                    most_recent_intersection = p2
+
         edge = Edge(p1, p2,
                     rest_length=rest_length,
                     spring_constant=spring_constant,
@@ -121,6 +171,13 @@ def connect_points(list_of_points,
         edges.append(edge)
 
     if complete_circle:
+        if connect_points_with == 'radial':
+            list_of_points[0].radial_before = most_recent_intersection
+            most_recent_intersection.radial_after = list_of_points[0]
+        elif connect_points_with == 'azimuthal':
+            list_of_points[0].azimuthal_before = most_recent_intersection
+            most_recent_intersection.azimuthal_after = list_of_points[0]
+
         edge = Edge(list_of_points[-1], list_of_points[0],
                     rest_length=rest_length,
                     spring_constant=spring_constant,
@@ -128,6 +185,9 @@ def connect_points(list_of_points,
                     tension=tension,
                     edge_type=edge_type)
         edges.append(edge)
+    else:
+        # Design choice here: if it's not completing circle, then the "after" will connect to itself...
+
     return edges
 
 def nodes_edges_around_circle(num_points=None,
@@ -161,7 +221,8 @@ def nodes_edges_around_circle(num_points=None,
                            stiffness=stiffness,
                            tension=tension,
                            edge_type=edge_type,
-                           complete_circle=True)
+                           complete_circle=True,
+                           connect_points_with='azimuthal')
     return points, edges
 
 
@@ -178,6 +239,20 @@ def connect_two_circles(c1, c2,
     connect_every is there because you only want to connect the points that are along
     radial lines, not intermediary points. num_segments_per_line gives the connections some
     wiggle-power.
+
+    Assume that c1 is "Inner" and c2 is "Outer". Then, since we work our way out,
+    So, we start with the center piece. We set its prior to itself, and its future to itself.
+    Then, we set its future to the next one.
+
+    Then, the next time, we set its prior to itself, and its future to itself.
+
+    That's bad! Because, on the 2-3 circle connect, we'll be overwriting how 2 connects back to 1.
+
+    How to deal with this? One easy way would be to connect the circles all at once. But that's
+    a lot of code change. I think I should just only overwrite if it doesn't have it already.
+
+
+    W
     """
     assert edge_type in ['spring_constant', 'stiffness_tension']
     zipped = zip(c1, c2)
@@ -185,12 +260,13 @@ def connect_two_circles(c1, c2,
     for i, (p1, p2) in enumerate(zipped):
         if i % connect_every != 0:
             continue
+        assert p1.intersection and p2.intersection #Fair enough for now.
         points = []
         points.append(p1)
         for j in range(1, num_segments_per_line):
             pos = p1.loc + ((p2.loc - p1.loc) * (j / num_segments_per_line))
             pos = pos.tolist()
-            points.append(Node(pos, [0,0,0], pinned=False, damping_coefficient=damping_coefficient))
+            points.append(Node(pos, [0,0,0], pinned=False, damping_coefficient=damping_coefficient, intersection=False))
         points.append(p2)
 
         new_edges = connect_points(points,
@@ -198,11 +274,26 @@ def connect_two_circles(c1, c2,
                                    spring_constant=spring_constant,
                                    stiffness=stiffness,
                                    tension=tension,
-                                   edge_type=edge_type)
+                                   edge_type=edge_type,
+                                   connect_points_with='radial')
         edges.extend(new_edges)
     print('returning connection points')
     return edges
 
+def connect_center_point_to_first_circle(center_point, first_circle):
+    # first_circle should be a list of points.
+    intersection_points = [p for p in first_circle if getattr(p, 'intersection', False)]
+    # Ideally, this would be divisible by 4. Right? For now, I can decide to enforce that...
+    if len(intersection_points) == 0 or len(intersection_points) % 4 != 0:
+        raise Exception("We got {} intersection points, when we wanted something divisible by 4!")
+    num_to_count_by = len(intersection_points) / 4
+    points = intersection_points[::num_to_count_by]
+    assert len(points) == 4
+    center_point.radial_after = points[0]
+    center_point.radial_before = points[2]
+    center_point.azimuthal_after = points[1]
+    center_point.azimuthal_before = points[3]
+    # if len(intersection_points)
 
 def radial_web(radius=None,
                num_radial=None,
@@ -224,7 +315,7 @@ def radial_web(radius=None,
     assert None not in [radius, num_radial, num_azimuthal,
                         num_segments_per_radial, num_segments_per_azimuthal]
 
-    center_point = Node([0,0,0],[0,0,0], pinned=False, damping_coefficient=damping_coefficient)
+    center_point = Node([0,0,0],[0,0,0], pinned=False, damping_coefficient=damping_coefficient, intersection=True)
     center_degen_circle = [center_point]*(num_radial*num_segments_per_azimuthal)
 
     edges = []
@@ -258,6 +349,8 @@ def radial_web(radius=None,
                                  connect_every=num_segments_per_azimuthal,
                                  num_segments_per_line=num_segments_per_radial)
         edges.extend(ce)
+
+
     web = Web(edges, center_point=center_point)
     return web
 
@@ -279,6 +372,9 @@ def many_segment_line(num_points=5, length=5, per_spring_rest_length=0.8, wiggle
         p2 = points[i+1]
         e = Edge(p1, p2, rest_length=per_spring_rest_length, spring_constant=12.0)
         edges.append(e)
+
+    connect_center_point_to_first_circle, center_point, list_of_circle_points[1]
+
     web = Web(edges)
     return web
 
