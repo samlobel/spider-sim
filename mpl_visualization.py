@@ -6,7 +6,8 @@ import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 
 class MPLWebDisplay(object):
-    def __init__(self, web, steps_per_frame=100, frames_to_write=100, step_size=0.001, blit=True, start_drawing_at=0.0):
+
+    def __init__(self, web, steps_per_frame=100, frames_to_write=100, step_size=0.001, blit=True, start_drawing_at=0.0, save_path='./videos/vid.mp4'):
         self.web = web
         self.edges = list(web.edge_set)
         self.step_size = step_size
@@ -14,6 +15,7 @@ class MPLWebDisplay(object):
         self.frames_to_write = frames_to_write
         self.blit = blit
         self.start_drawing_at = start_drawing_at
+        self.save_path = save_path or self.DEFAULT_SAVE_PATH
         self.set_up_3d_figure()
 
     def set_up_3d_figure(self):
@@ -89,7 +91,7 @@ class MPLWebDisplay(object):
                                        interval=1)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1800)
-        web_ani.save('./videos/impulse_off_center.mp4', writer=writer)
+        web_ani.save('./videos/vid.mp4', writer=writer)
         # plt.show()
         # plt.show()
 

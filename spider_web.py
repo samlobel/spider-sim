@@ -258,3 +258,25 @@ class Web(object):
             point_set.add(e.p1)
             point_set.add(e.p2)
         return point_set
+
+class Spider(object):
+    def __init__(self, web, starting_point):
+        self.web = web
+        self.current_point = starting_point
+        assert starting_point.intersection == True
+        # import ipdb; ipdb.set_trace()
+
+        assert starting_point.radial_before
+        assert starting_point.radial_after
+        assert starting_point.azimuthal_before
+        assert starting_point.azimuthal_after
+
+
+    def move(self, direction):
+        assert direction in ["radial_before", "radial_after", "azimuthal_before", "azimuthal_after"]
+        self.current_point = getattr(self.current_point, direction)
+
+        assert self.current_point.radial_before
+        assert self.current_point.radial_after
+        assert self.current_point.azimuthal_before
+        assert self.current_point.azimuthal_after

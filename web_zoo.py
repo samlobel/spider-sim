@@ -121,7 +121,7 @@ def connect_points(list_of_points,
     So, if the first point doesn't have a before, I set it to itself. If it does, I don't!
     Same thing with the last point, pretty much.
     """
-
+    # print(connect_points_with)
     assert len(list_of_points) > 1
     assert edge_type in ['spring_constant', 'stiffness_tension']
     assert connect_points_with in [None, 'radial', 'azimuthal']
@@ -148,6 +148,7 @@ def connect_points(list_of_points,
 
         if connect_points_with is not None:
             if p2.intersection == True:
+                # print('connecting point with {}'.format(connect_points_with))
                 if connect_points_with == 'radial':
                     p2.radial_before = most_recent_intersection
                     most_recent_intersection.radial_after = p2
@@ -185,7 +186,7 @@ def connect_points(list_of_points,
                     tension=tension,
                     edge_type=edge_type)
         edges.append(edge)
-    else:
+    # else:
         # Design choice here: if it's not completing circle, then the "after" will connect to itself...
 
     return edges
@@ -215,6 +216,7 @@ def nodes_edges_around_circle(num_points=None,
                                  pinned=pinned,
                                  damping_coefficient=damping_coefficient)
 
+    # print('boom?')
     edges = connect_points(points,
                            rest_length=rest_length,
                            spring_constant=spring_constant,
@@ -277,17 +279,18 @@ def connect_two_circles(c1, c2,
                                    edge_type=edge_type,
                                    connect_points_with='radial')
         edges.extend(new_edges)
-    print('returning connection points')
+    # print('returning connection points')
     return edges
 
 def connect_center_point_to_first_circle(center_point, first_circle):
+    # print('connect center point called...')
     # first_circle should be a list of points.
     intersection_points = [p for p in first_circle if getattr(p, 'intersection', False)]
     # Ideally, this would be divisible by 4. Right? For now, I can decide to enforce that...
     if len(intersection_points) == 0 or len(intersection_points) % 4 != 0:
         raise Exception("We got {} intersection points, when we wanted something divisible by 4!")
     num_to_count_by = len(intersection_points) / 4
-    points = intersection_points[::num_to_count_by]
+    points = intersection_points[::int(num_to_count_by)]
     assert len(points) == 4
     center_point.radial_after = points[0]
     center_point.radial_before = points[2]
@@ -352,6 +355,9 @@ def radial_web(radius=None,
 
 
     web = Web(edges, center_point=center_point)
+
+    connect_center_point_to_first_circle(center_point, list_of_circle_points[1])
+
     return web
 
 
@@ -373,7 +379,6 @@ def many_segment_line(num_points=5, length=5, per_spring_rest_length=0.8, wiggle
         e = Edge(p1, p2, rest_length=per_spring_rest_length, spring_constant=12.0)
         edges.append(e)
 
-    connect_center_point_to_first_circle, center_point, list_of_circle_points[1]
 
     web = Web(edges)
     return web
