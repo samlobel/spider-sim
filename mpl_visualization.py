@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
+import numpy as np
 
 class MPLWebDisplay(object):
 
@@ -20,7 +21,8 @@ class MPLWebDisplay(object):
 
     def set_up_3d_figure(self):
         fig = plt.figure()
-        ax = p3.Axes3D(fig)
+        # ax = p3.Axes3D(fig)
+        ax = fig.add_subplot(111, projection='3d')
         ax.set_xlim3d([-4.0, 4.0])
         ax.set_xlabel('X')
 

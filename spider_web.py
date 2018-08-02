@@ -15,6 +15,8 @@ Or, just using the average acceleration might do it too.
 import numpy as np
 from numpy import linalg as LA
 
+from collections import OrderedDict
+
 class Node(object):
     """
     NOTE: I don't use the mass at all, which is really stupid. It should be that I only store the
@@ -232,7 +234,26 @@ class Web(object):
         self.force_func = force_func
         self.movement_func = movement_func
         self.center_point = center_point
+
+        # The keys are points. The values should be a tuple of lists...
+        # The first is loc, the second for vel, the third is acc. You can't actually measure pos though.
+        self.gather_points = OrderedDict()
         pass
+
+    def reset_gather_points(self):
+        for p in self.gather_points:
+            self.gather_points[p] = ([],[],[])
+
+    def set_gather_points(self, point_list):
+        self.gather_points = OrderedDict()
+        for p in point_list:
+            self.gather_points[p] = ([],[],[])
+
+    def record_gather_points(self):
+        for p in self.gather_points:
+            self.gather_points[p][0].append(np.copy(p.loc))
+            self.gather_points[p][1].append(np.copy(p.vel))
+            self.gather_points[p][2].append(np.copy(p.acc))
 
     def step(self, timestep=1.0):
         """
@@ -257,6 +278,7 @@ class Web(object):
         for e in self.edge_set:
             point_set.add(e.p1)
             point_set.add(e.p2)
+
         return point_set
 
 class Spider(object):

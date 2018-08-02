@@ -3,6 +3,29 @@ import time
 from mpl_visualization import  MPLWebDisplay
 from spider_web import Spider
 
+import numpy as np
+
+import matplotlib.animation as animation
+from collections import defaultdict
+
+def get_all_points_in_line_from_spider(spider, web):
+    # This is only useful for now. I'm going to do a center-web type thing,
+    # where I give it a center we
+    cp = spider.current_point
+    assert web.center_point == cp
+    point_vals = defaultdict(list)
+    for direction in ['radial_before', 'radial_after', 'azimuthal_before', 'azimuthal_after']:
+        this_point = getattr(cp, direction)
+        point_vals[direction].append(this_point)
+        while this_point.radial_after != this_point:
+            this_point = this_point.radial_after
+            point_vals[direction].append(this_point)
+
+    sizes = set([len(point_vals[k]) for k in point_vals])
+    assert len(sizes) == 1 # Ensures they're all the same length.
+
+    return point_vals
+
 class MPLWebDisplayWithSpider(MPLWebDisplay):
     def __init__(self, web, spider, **kwargs):
         print('huzzah!')
@@ -10,19 +33,20 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
         self.spider = spider
         super().__init__(web, **kwargs)
 
-    def set_up_line_drawings(self):
-        super().set_up_line_drawings()
-        cp = self.spider.current_point
-
-        xs, ys, zs = [[v] for v in self.spider.current_point.loc]
-        self.spider_point_draw = self.ax.scatter(xs, ys, zs, color='green')
-
-        leg_locs = [getattr(cp, val).loc for val in ['radial_before', 'radial_after', 'azimuthal_before', 'azimuthal_after']]
-
-        leg_xs, leg_ys, leg_zs = zip(*leg_locs)
-        self.spider_legs_draw = self.ax.scatter(leg_xs, leg_ys, leg_zs, color="black")
+    # def set_up_line_drawings(self):
+    #     super().set_up_line_drawings()
+    #     cp = self.spider.current_point
+    #
+    #     xs, ys, zs = [[v] for v in self.spider.current_point.loc]
+    #     self.spider_point_draw = self.ax.scatter(xs, ys, zs, color='red', linewidth=2)
+    #
+    #     leg_locs = [getattr(cp, val).loc for val in ['radial_before', 'radial_after', 'azimuthal_before', 'azimuthal_after']]
+    #
+    #     leg_xs, leg_ys, leg_zs = zip(*leg_locs)
+    #     self.spider_legs_draw = self.ax.scatter(leg_xs, leg_ys, leg_zs, color="black", linewidth=2)
 
     def draw_web(self, frame, step=True):
+        # self.ax.clear()
         if hasattr(self, 'center_draw'):
             self.center_draw.remove()
         if hasattr(self, 'leg_draw'):
@@ -39,21 +63,22 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
             zipped = list(zip(e.p1.loc, e.p2.loc))
             self.ax.plot(*zipped, color='cyan')
 
-        xs, ys, zs = [[v] for v in self.spider.current_point.loc]
-
-        self.center_draw = self.ax.scatter(xs, ys, zs, color='green')
+        xs, ys, zs = [np.asarray([v]) for v in self.spider.current_point.loc]
+        self.center_draw = self.ax.scatter(xs, ys, zs, color='green', linewidth=10, depthshade=False)
 
         leg_locs = [getattr(cp, val).loc for val in ['radial_before', 'radial_after', 'azimuthal_before', 'azimuthal_after']]
 
         leg_xs, leg_ys, leg_zs = zip(*leg_locs)
-        self.leg_draw = self.ax.scatter(leg_xs, leg_ys, leg_zs, color="red")
+        self.leg_draw = self.ax.scatter(leg_xs, leg_ys, leg_zs, color="red", linewidth=10, depthshade=False)
 
 
-        if step:
-            for _ in range(self.steps_per_frame):
-                # print("Stepping time number {}".format(_))
-                self.web.step(self.step_size)
-        print("Took {} seconds to draw web without blit".format(time.time()-start_time))
+
+
+        # if step:
+        #     for _ in range(self.steps_per_frame):
+        #         # print("Stepping time number {}".format(_))
+        #         self.web.step(self.step_size)
+        # print("Took {} seconds to draw web without blit".format(time.time()-start_time))
 
 
     def update_drawing_blit(self):
@@ -84,19 +109,34 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
         print("Took {} seconds to draw web WITH blit".format(time.time()-start_time))
         return self.update_drawing_blit()
 
+    def run(self):
+        # This will actually happen as part of a data-generating phase...
+        while self.web.num_steps < self.start_drawing_at:
+            self.web.step(self.step_size)
+
+        FFMpegWriter = animation.writers['ffmpeg']
+        writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
+        with writer.saving(self.fig, "writer_test.mp4", 100):
+            for frame in range(self.frames_to_write):
+                print('frame {}'.format(frame))
+                for _ in range(self.steps_per_frame):
+                    self.web.step(self.step_size)
+                self.draw_web(frame)
+                writer.grab_frame()
+
 
 if __name__ == '__main__':
     import web_zoo
 
     radius=10
     web = web_zoo.radial_web(radius=radius,
-                             num_radial=8,
-                             num_azimuthal=16,
+                             num_radial=16,
+                             num_azimuthal=8,
                              stiffness_radial=0,
                              tension_radial=300,
                              stiffness_azimuthal=0,
                              # stiffness_azimuthal=90,
-                             tension_azimuthal=30,
+                             tension_azimuthal=20,
                              damping_coefficient=0.1,
                              edge_type='stiffness_tension',
                              num_segments_per_radial=2,
@@ -107,7 +147,49 @@ if __name__ == '__main__':
     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
     wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.01, blit=False, start_drawing_at=2.0)
 
-    wd.run()
+    gather_points = [spider.current_point.radial_before,
+                     spider.current_point.radial_after,
+                     spider.current_point.azimuthal_before,
+                     spider.current_point.azimuthal_after]
+
+    web.set_gather_points(gather_points)
+
+    point_dict = get_all_points_in_line_from_spider(spider, web)
+
+    print(point_dict)
+    exit()
+
+    while wd.web.num_steps < wd.start_drawing_at:
+        wd.web.step(wd.step_size)
+
+    FFMpegWriter = animation.writers['ffmpeg']
+    writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
+    with writer.saving(wd.fig, "writer_test.mp4", 100):
+        for frame in range(15):
+            for _ in range(wd.steps_per_frame):
+                wd.web.step(wd.step_size)
+            web.record_gather_points()
+            print(web.gather_points)
+            if frame % 5 == 0 and frame < 25:
+                wd.spider.current_point = wd.spider.current_point.radial_after
+            elif frame % 5 == 0 and frame >= 25:
+                wd.spider.current_point = wd.spider.current_point.azimuthal_after
+
+            wd.draw_web(frame)
+            writer.grab_frame()
+
+        # for frame in range(wd.frames_to_write):
+        #     if frame % 3 == 0:
+        #         print('moving spider')
+        #         wd.spider.current_point = wd.spider.current_point.radial_after
+        #     print('frame {}'.format(frame))
+        #     for _ in range(wd.steps_per_frame):
+        #         wd.web.step(wd.step_size)
+        #     wd.draw_web(frame)
+        #     writer.grab_frame()
+
+
+    # wd.run()
 
 
 
