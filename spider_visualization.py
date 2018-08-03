@@ -11,6 +11,8 @@ from collections import defaultdict
 def get_all_points_in_line_from_spider(spider, web):
     # This is only useful for now. I'm going to do a center-web type thing,
     # where I give it a center we
+    # I just realized, that we don't want to include that last one. Becuase it's pinned,
+    # so it'll never move. Luckily, it seems I did that by accident before.
     cp = spider.current_point
     assert web.center_point == cp
     point_vals = defaultdict(list)
@@ -145,7 +147,7 @@ if __name__ == '__main__':
 
     spider = Spider(web, web.center_point)
     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
-    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.01, blit=False, start_drawing_at=2.0)
+    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=2.0)
 
     gather_points = [spider.current_point.radial_before,
                      spider.current_point.radial_after,
@@ -157,7 +159,15 @@ if __name__ == '__main__':
     point_dict = get_all_points_in_line_from_spider(spider, web)
 
     print(point_dict)
-    exit()
+
+    off_center_point = list(filter(lambda p : p.loc[0] == 5.0, web.point_set))[0]
+
+    assert off_center_point
+
+    force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=3.0)
+    web.force_func = force_func
+
+    # exit()
 
     while wd.web.num_steps < wd.start_drawing_at:
         wd.web.step(wd.step_size)
@@ -165,11 +175,11 @@ if __name__ == '__main__':
     FFMpegWriter = animation.writers['ffmpeg']
     writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
     with writer.saving(wd.fig, "writer_test.mp4", 100):
-        for frame in range(15):
+        for frame in range(500):
             for _ in range(wd.steps_per_frame):
                 wd.web.step(wd.step_size)
-            web.record_gather_points()
-            print(web.gather_points)
+            # web.record_gather_points()
+            # print(web.gather_points)
             if frame % 5 == 0 and frame < 25:
                 wd.spider.current_point = wd.spider.current_point.radial_after
             elif frame % 5 == 0 and frame >= 25:
