@@ -53,9 +53,9 @@ if __name__ == '__main__':
     num_segments_per_azimuthal=5
 
     step_size = 0.002
-    start_recording_at = 0.1
-    # recording_size = 500 #How many samples to record.
-    recording_size=50
+    start_recording_at = 3.0
+    recording_size = 500 #How many samples to record.
+    # recording_size=50
     CONFIG = {
         'radius': radius,
         'num_radial': num_radial,
@@ -68,7 +68,8 @@ if __name__ == '__main__':
         'edge_type':edge_type,
         'num_segments_per_radial':num_segments_per_radial,
         'num_segments_per_azimuthal':num_segments_per_azimuthal,
-        'recording_size':recording_size
+        'recording_size':recording_size,
+        'start_recording_at':start_recording_at,
     }
 
 
@@ -88,8 +89,8 @@ if __name__ == '__main__':
 
     # FINAL_GATHER_LOC = {}
 
-    NUM_RECORDINGS_PER_POINT=1 #change to 100 at some point.
-
+    # NUM_RECORDINGS_PER_POINT=1 #change to 100 at some point.
+    NUM_RECORDINGS_PER_POINT=100
 
     for direction in direction_map.keys():
         SAMPLES = [] # A list of 24x500 samples
@@ -124,7 +125,7 @@ if __name__ == '__main__':
 
             web.set_gather_points(gather_points)
 
-            force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=3.0)
+            force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=2.0)
             web.force_func = force_func
 
             print("stepping along")
