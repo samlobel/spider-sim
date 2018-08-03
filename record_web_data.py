@@ -4,9 +4,10 @@ import web_zoo
 from spider_web import Spider
 from spider_visualization import get_all_points_in_line_from_spider
 
+import json
 from collections import OrderedDict
 
-def morph_gather_points_dict_to_something_useable(gather_points_dict):
+def morph_gather_points_dict_to_something_useable(gather_points_dict, recording_size=500):
     """Each leg is a channel, each sense is a channel, and then time is a type of channel.
     I think, the we we could do it, is just say vel and acc are the channels, and concatenate them.
     And then, do that for each leg. So, you get 6 dim * 4 legs = 24 channels. So, it'll be a
@@ -24,7 +25,7 @@ def morph_gather_points_dict_to_something_useable(gather_points_dict):
     values_np = np.asarray(list(values))
     without_loc = values_np[:,1:,:,:]
     time_series_last = without_loc.transpose(0,1,3,2) # Switch the last two dimensions.
-    flattened = np.reshape(time_series_last, (24, 500))
+    flattened = np.reshape(time_series_last, (24, recording_size))
     return flattened
 
 if __name__ == '__main__':
@@ -38,22 +39,44 @@ if __name__ == '__main__':
 
 
     radius = 10
-    # num_radial = 16
-    # num_azimuthal = 16
-    num_radial=8
-    num_azimuthal=8
+    num_radial = 16
+    num_azimuthal = 8
+    # num_radial=16
+    # num_azimuthal=16
     stiffness_radial = 0
-    tension_radial = 300
+    tension_radial = 100
     stiffness_azimuthal = 0
     tension_azimuthal = 20
     damping_coefficient=0.1
     edge_type='stiffness_tension'
-    num_segments_per_radial=2
+    num_segments_per_radial=5
     num_segments_per_azimuthal=5
 
     step_size = 0.002
     start_recording_at = 0.1
-    recording_size = 500 #How many samples to record.
+    # recording_size = 500 #How many samples to record.
+    recording_size=50
+    CONFIG = {
+        'radius': radius,
+        'num_radial': num_radial,
+        'num_azimuthal': num_azimuthal,
+        'stiffness_radial': stiffness_radial,
+        'tension_radial': tension_radial,
+        'stiffness_azimuthal': stiffness_azimuthal,
+        'tension_azimuthal': tension_azimuthal,
+        'damping_coefficient': damping_coefficient,
+        'edge_type':edge_type,
+        'num_segments_per_radial':num_segments_per_radial,
+        'num_segments_per_azimuthal':num_segments_per_azimuthal,
+        'recording_size':recording_size
+    }
+
+
+    jsonified_config = json.dumps(CONFIG, sort_keys=True, indent=4)
+    print(jsonified_config)
+    with open('data/config.json', 'w') as f:
+        f.write(jsonified_config)
+
 
     """
     So, I do want to reset the web every time I change points. But, what I can easily do is,
@@ -65,11 +88,12 @@ if __name__ == '__main__':
 
     # FINAL_GATHER_LOC = {}
 
-    SAMPLES = [] # A list of 24x500 samples
-    TARGETS = [] # A list of scalars, which correspond to the target-direction.
-    NUM_RECORDINGS_PER_POINT=2 #change to 100 at some point.
+    NUM_RECORDINGS_PER_POINT=1 #change to 100 at some point.
+
 
     for direction in direction_map.keys():
+        SAMPLES = [] # A list of 24x500 samples
+        TARGETS = [] # A list of scalars, which correspond to the target-direction.
         for index in range(num_azimuthal - 1):
             # Re-create the web...
             web = web_zoo.radial_web(radius=radius,
@@ -115,14 +139,15 @@ if __name__ == '__main__':
                 for number_of_samples in range(recording_size):
                     web.step(step_size)
                     web.record_gather_points()
-                something_useable = morph_gather_points_dict_to_something_useable(web.gather_points)
+                something_useable = morph_gather_points_dict_to_something_useable(web.gather_points, recording_size)
                 SAMPLES.append(something_useable)
                 TARGETS.append(direction_map[direction])
                 print("Num things collected: {}".format(len(SAMPLES)))
             print("Done with index {} of direction {}.".format(index, direction))
         print("Altogether done with direction {}".format(direction))
+        samples_as_numpy = np.asarray(SAMPLES)
+        targets_as_numpy = np.asarray(TARGETS)
+        np.save('data/train_samples_{}'.format(direction), samples_as_numpy)
+        np.save('data/train_targets_{}'.format(direction), samples_as_numpy)
+
     print("Done with everything. Waow.")
-    samples_as_numpy = np.asarray(SAMPLES)
-    targets_as_numpy = np.asarray(TARGETS)
-    np.save('data/train_samples', samples_as_numpy)
-    np.save('data/train_targets', samples_as_numpy)
