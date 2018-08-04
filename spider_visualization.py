@@ -135,7 +135,7 @@ if __name__ == '__main__':
                              num_radial=16,
                              num_azimuthal=8,
                              stiffness_radial=0,
-                             tension_radial=300,
+                             tension_radial=100,
                              stiffness_azimuthal=0,
                              # stiffness_azimuthal=90,
                              tension_azimuthal=20,
