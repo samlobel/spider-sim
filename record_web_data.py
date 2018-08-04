@@ -149,6 +149,6 @@ if __name__ == '__main__':
         samples_as_numpy = np.asarray(SAMPLES)
         targets_as_numpy = np.asarray(TARGETS)
         np.save('data/train_samples_{}'.format(direction), samples_as_numpy)
-        np.save('data/train_targets_{}'.format(direction), samples_as_numpy)
+        np.save('data/train_targets_{}'.format(direction), targets_as_numpy)
 
     print("Done with everything. Waow.")
