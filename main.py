@@ -35,7 +35,7 @@ testing_init_op = iterator.make_initializer(test_dataset)
 init_op = tf.global_variables_initializer()
 
 # log_dir = './logging/{}'.format(DATA_SUBDIR, arch_str)
-log_dir = "./logging/logging3"
+log_dir = "./logging/logging4"
 # if os.path.exists(log_dir):
 #     shutil.rmtree(log_dir)
 print("log directory: %s" % log_dir)
@@ -43,10 +43,10 @@ summary_writer = tf.summary.FileWriter(log_dir, graph=tf.get_default_graph())
 
 
 with tf.Session() as sess:
-    # sess.run(init_op)
-    model.saver.restore(sess, 'checkpoints/model')
+    sess.run(init_op)
+    # model.saver.restore(sess, 'checkpoints/model')
 
-    for epoch in range(20):
+    for epoch in range(1000):
         sess.run(training_init_op)
         for i in range(BATCHES_PER_EPOCH):
             global_step = epoch*BATCHES_PER_EPOCH + i

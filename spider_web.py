@@ -249,6 +249,10 @@ class Web(object):
         for p in point_list:
             self.gather_points[p] = ([],[],[])
 
+    def number_of_gathered_samples(self):
+        for p in self.gather_points:
+            return len(self.gather_points[p][0])
+
     def record_gather_points(self):
         for p in self.gather_points:
             self.gather_points[p][0].append(np.copy(p.loc))

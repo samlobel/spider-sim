@@ -73,10 +73,12 @@ class SpiderModel(object):
         loss = tf.reduce_mean(loss)
         output_probabilities = tf.nn.softmax(self.logits_out)
 
+        best_guess = tf.argmax(self.logits_out, 1)
         # correct_prediction = tf.equal(tf.argmax(self.logits_out, 1), tf.argmax(self.target_ph, 1))
         correct_prediction = tf.equal(tf.argmax(self.logits_out, 1), self.targets)
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+        self.best_guess = best_guess
         self.loss = loss
         self.output_probabilities = output_probabilities
         self.accuracy = accuracy

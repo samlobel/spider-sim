@@ -7,6 +7,14 @@ from spider_visualization import get_all_points_in_line_from_spider
 import json
 from collections import OrderedDict
 
+direction_map = OrderedDict([
+    ('radial_before', 0),
+    ('radial_after', 1),
+    ('azimuthal_before', 2),
+    ('azimuthal_after', 3),
+])
+
+
 def morph_gather_points_dict_to_something_useable(gather_points_dict, recording_size=500):
     """Each leg is a channel, each sense is a channel, and then time is a type of channel.
     I think, the we we could do it, is just say vel and acc are the channels, and concatenate them.
@@ -30,12 +38,12 @@ def morph_gather_points_dict_to_something_useable(gather_points_dict, recording_
 
 if __name__ == '__main__':
 
-    direction_map = OrderedDict([
-        ('radial_before', 0),
-        ('radial_after', 1),
-        ('azimuthal_before', 2),
-        ('azimuthal_after', 3),
-    ])
+    # direction_map = OrderedDict([
+    #     ('radial_before', 0),
+    #     ('radial_after', 1),
+    #     ('azimuthal_before', 2),
+    #     ('azimuthal_after', 3),
+    # ])
 
 
     radius = 10
