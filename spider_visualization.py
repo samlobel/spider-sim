@@ -55,7 +55,7 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
             self.leg_draw.remove()
 
         start_time = time.time()
-        print("Draw lines without blit")
+        # print("Draw lines without blit")
         cp = self.spider.current_point
         self.ax.lines = []
         # for i, l in enumerate(self.ax.lines):
@@ -174,15 +174,16 @@ if __name__ == '__main__':
 
     FFMpegWriter = animation.writers['ffmpeg']
     writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
-    with writer.saving(wd.fig, "writer_test.mp4", 100):
+    with writer.saving(wd.fig, "walking_spider.mp4", 100):
         for frame in range(500):
+            print("Drawing frame {}".format(frame))
             for _ in range(wd.steps_per_frame):
                 wd.web.step(wd.step_size)
             # web.record_gather_points()
             # print(web.gather_points)
-            if frame % 5 == 0 and frame < 25:
+            if frame % 10 == 0 and frame < 50:
                 wd.spider.current_point = wd.spider.current_point.radial_after
-            elif frame % 5 == 0 and frame >= 25:
+            elif frame % 10 == 0 and frame >= 50:
                 wd.spider.current_point = wd.spider.current_point.azimuthal_after
 
             wd.draw_web(frame)

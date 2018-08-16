@@ -306,3 +306,51 @@ class Spider(object):
         assert self.current_point.radial_after
         assert self.current_point.azimuthal_before
         assert self.current_point.azimuthal_after
+
+VALID_DIRECTIONS = ["radial_before", "radial_after", "azimuthal_before", "azimuthal_after"]
+
+def get_points_neighbors(point):
+    connection_points = [getattr(point, val, None) for val in VALID_DIRECTIONS]
+    assert None not in connection_points
+    return connection_points
+
+def ensure_point_is_valid_intersection(point):
+    assert point.intersection == True
+    connection_points = get_points_neighbors(point)
+    assert None not in connection_points
+
+
+def get_distance_between_two_points(p1, p2):
+    # NOTE This NEEDS tests! Too complicated to trust.
+
+    ensure_point_is_valid_intersection(p1)
+    ensure_point_is_valid_intersection(p2)
+
+    if p1 == p2:
+        print("Trying to compare distance between two points that are the same point!!!")
+        raise Exception()
+
+    seen = set()
+    frontier = set()
+    new_frontier = set()
+    frontier.add(p1)
+    distance = 0
+    while True:
+        # End condition: if p2 is in the frontier, you're done!
+        if p2 in frontier:
+            return distance
+        # Now, you've seen and checked the frontier
+        seen = seen.union(frontier)
+        # First, get the new frontier
+        for point in frontier:
+            neighbors = get_points_neighbors(point)
+            new_frontier = new_frontier.union(neighbors)
+        # which involves only choosing new stuff.
+        new_frontier = new_frontier.difference(seen)
+        # Make sure they're all good...
+        for point in new_frontier:
+            ensure_point_is_valid_intersection(point)
+        # Then, set the frontier to the new_frontier, and increment your count.
+        frontier = new_frontier
+        new_frontier = set()
+        distance += 1
