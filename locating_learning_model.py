@@ -51,18 +51,19 @@ class SpiderLocator(object):
         self.construct_forward_pass()
         self.construct_training()
         self.construct_logging()
+        self.saver = tf.train.Saver()
 
     def construct_forward_pass(self):
-        h = self.samples
-        h = slim.fully_connected(h, 50, activation_fn=tf.nn.elu)
-        h = slim.fully_connected(h, 25, activation_fn=tf.nn.elu)
-        h = slim.fully_connected(h, 4, activation_fn=tf.nn.tanh)
-        self.network_output = h
         # h = self.samples
-        # h = slim.fully_connected(h, 100, activation_fn=tf.nn.elu)
-        # h = slim.fully_connected(h, 10, activation_fn=tf.nn.elu)
+        # h = slim.fully_connected(h, 50, activation_fn=tf.nn.elu)
+        # h = slim.fully_connected(h, 25, activation_fn=tf.nn.elu)
         # h = slim.fully_connected(h, 4, activation_fn=tf.nn.tanh)
         # self.network_output = h
+        h = self.samples
+        h = slim.fully_connected(h, 1000, activation_fn=tf.nn.elu)
+        h = slim.fully_connected(h, 100, activation_fn=tf.nn.elu)
+        h = slim.fully_connected(h, 4, activation_fn=tf.nn.tanh)
+        self.network_output = h
 
         self.prediction = tf.argmax(self.network_output, axis=1) # I think that's right.
 
@@ -72,6 +73,7 @@ class SpiderLocator(object):
         squared_difference = tf.squared_difference(self.targets, self.network_output)
         mean_square_error = tf.reduce_mean(squared_difference)
         train_op = tf.train.AdamOptimizer(1e-4).minimize(mean_square_error)
+        # train_op = tf.train.GradientDescentOptimizer(1e-4).minimize(mean_square_error)
 
         self.error = mean_square_error
         self.train_op = train_op
