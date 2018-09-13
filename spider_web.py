@@ -287,6 +287,7 @@ class Web(object):
 
 class Spider(object):
     def __init__(self, web, starting_point):
+        # we really don't need the web argument, do we. I guess it doesn't hurt?
         self.web = web
         self.current_point = starting_point
         assert starting_point.intersection == True
@@ -297,6 +298,9 @@ class Spider(object):
         assert starting_point.azimuthal_before
         assert starting_point.azimuthal_after
 
+        # self.gather_points = OrderedDict()
+        self.set_gather_points()
+
 
     def move(self, direction):
         assert direction in ["radial_before", "radial_after", "azimuthal_before", "azimuthal_after"]
@@ -306,6 +310,88 @@ class Spider(object):
         assert self.current_point.radial_after
         assert self.current_point.azimuthal_before
         assert self.current_point.azimuthal_after
+
+        # self.gather_points = OrderedDict()
+        self.set_gather_points()
+        pass
+
+    def get_gather_points(self):
+        return [self.current_point.radial_before,
+                self.current_point.radial_after,
+                self.current_point.azimuthal_before,
+                self.current_point.azimuthal_after]
+
+    def reset_gather_points(self):
+        for p in self.gather_points:
+            self.gather_points[p] = ([],[],[])
+
+    def set_gather_points(self):
+        # new_gather_points = [self.current_point.radial_before,
+        #                      self.current_point.radial_after,
+        #                      self.current_point.azimuthal_before,
+        #                      self.current_point.azimuthal_after]
+        new_gather_points = self.get_gather_points()
+        # It should set gather points in a particular order, the order of the directions.
+        self.gather_points = OrderedDict()
+        for p in new_gather_points:
+            self.gather_points[p] = ([],[],[])
+
+    def number_of_gathered_samples(self):
+        for p in self.gather_points:
+            return len(self.gather_points[p][0])
+
+    def record_gather_points(self):
+        for p in self.gather_points:
+            self.gather_points[p][0].append(np.copy(p.loc))
+            self.gather_points[p][1].append(np.copy(p.vel))
+            self.gather_points[p][2].append(np.copy(p.acc))
+
+    def vectorize_gather_point_dict(
+        self,
+        recording_size=500,
+        squash_to_energy=True,
+        include_radial_distance=False):
+
+        """Each leg is a channel, each sense is a channel, and then time is a type of channel.
+        I think, the we we could do it, is just say vel and acc are the channels, and concatenate them.
+        And then, do that for each leg. So, you get 6 dim * 4 legs = 24 channels. So, it'll be a
+        conv1d, with 24 channels.
+        It would be better if we really did it with the right dimensionality, but I don't want to.
+
+        Fork, I have to get rid of the accelerations!
+
+        So, it's 4 points, so dim-1 is 4. Then there's 3 dimensions, loc, vel, acc. We want to get rid
+        of loc. So, that's the second dimension. The 3rd is the 500. The 4th is the xyz measuremnets,
+        for example of velocity.
+        So, it should be a[:,1:,:,:]
+        """
+
+        assert self.number_of_gathered_samples() == recording_size
+
+        if include_radial_distance and not squash_to_energy:
+            raise Exception("Option not supported at this time.")
+
+        if include_radial_distance:
+            assert hasattr(self.current_point, 'distance_from_center')
+
+        values = self.gather_points.values()
+        values_np = np.asarray(list(values))
+        without_loc = values_np[:,1:,:,:]
+        time_series_last = without_loc.transpose(0,1,3,2) # Switch the last two dimensions.
+        flattened = np.reshape(time_series_last, (24, recording_size))
+        if not squash_to_energy:
+            return flattened
+
+        flattened_energy = np.mean(flattened * flattened, axis=-1)
+        assert flattened_energy.shape == (24,)
+        if not include_radial_distance:
+            return flattened_energy
+
+        new_array = np.empty((25,), np.float32)
+        new_array[0:24] = flattened_energy
+        new_array[24] = self.current_point.distance_from_center #That's the last one. Zero indexing...
+        return new_array
+
 
 VALID_DIRECTIONS = ["radial_before", "radial_after", "azimuthal_before", "azimuthal_after"]
 
@@ -327,8 +413,9 @@ def get_distance_between_two_points(p1, p2):
     ensure_point_is_valid_intersection(p2)
 
     if p1 == p2:
-        print("Trying to compare distance between two points that are the same point!!!")
-        raise Exception()
+        # print("Trying to compare distance between two points that are the same point!!!")
+        return 0
+        # raise Exception()
 
     seen = set()
     frontier = set()

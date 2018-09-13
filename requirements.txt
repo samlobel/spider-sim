@@ -1,3 +1,5 @@
 numpy
 ipdb
 matplotlib
+scikit-learn
+scipy
