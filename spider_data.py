@@ -22,6 +22,7 @@ So, I have this iterator. I'm going to make two, and use the from_structure thin
 
 import pickle
 import tensorflow as tf
+import numpy as np
 from sklearn.model_selection import train_test_split
 
 
@@ -36,11 +37,30 @@ train_data, test_data = datasets['train'], datasets['test']
 def get_data(input_dataset, batch_size):
     # This works for the locating data too! Very nice.
     samples, targets = input_dataset
+    print("Data will be {} samples and targets".format(len(samples)))
+    print('sample types are: {}'.format(samples.dtype))
+    print('target types are: {}'.format(targets.dtype))
     samples_t = tf.data.Dataset.from_tensor_slices(samples)
     targets_t  = tf.data.Dataset.from_tensor_slices(targets)
     dataset = tf.data.Dataset.zip((samples_t, targets_t)).shuffle(500).repeat().batch(batch_size, drop_remainder=True)
 
     return dataset
+
+
+def get_locating_data(input_dataset, batch_size):
+    # This works for the locating data too! Very nice.
+    samples, targets = input_dataset
+    mean, variance = np.mean(samples, axis=0), np.var(samples, axis=0)
+    print("Mean:\n{}\n\nVariance:\n{}\n".format(mean, variance))
+    print("Data will be {} samples and targets".format(len(samples)))
+    print('sample types are: {}'.format(samples.dtype))
+    print('target types are: {}'.format(targets.dtype))
+    samples_t = tf.data.Dataset.from_tensor_slices(samples)
+    targets_t  = tf.data.Dataset.from_tensor_slices(targets)
+    dataset = tf.data.Dataset.zip((samples_t, targets_t)).shuffle(500).batch(batch_size, drop_remainder=True)
+
+    return dataset
+
 
 def get_train_data(batch_size):
     return get_data(train_data, batch_size)
@@ -78,10 +98,10 @@ def get_train_test_split_for_locating_data(file_location, test_proportion=0.1, w
 locating_data = get_train_test_split_for_locating_data("data/locating/data.pkl")
 
 def get_locating_train_data(batch_size):
-    return get_data(locating_data['train'], batch_size)
+    return get_locating_data(locating_data['train'], batch_size)
 
 def get_locating_test_data(batch_size):
-    return get_data(locating_data['test'], batch_size)
+    return get_locating_data(locating_data['test'], batch_size)
 
 
 if __name__ == '__main__':

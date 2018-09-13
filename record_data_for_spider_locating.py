@@ -26,6 +26,8 @@ import web_zoo
 from spider_web import get_distance_between_two_points, Spider
 import json
 import os
+import pickle
+import numpy as np
 
 def assign_each_point_in_web_a_radial_fraction(web, num_azimuthal):
     center_point = web.center_point
@@ -165,10 +167,18 @@ def test_it_out(
                                 num_segments_per_radial=5,
                                 num_segments_per_azimuthal=5,
                                 )
+
+        print("Finding a force-point...")
         assign_each_point_in_web_a_radial_fraction(web, num_azimuthal)
         point_to_vibrate = web.center_point
         for _ in range(i):
             point_to_vibrate = point_to_vibrate.radial_after
+
+        print("Assigning a force_func")
+
+        force_func = web_zoo.random_oscillate_point_one_dimension(point_to_vibrate, [0,0,1.0], max_force=250.0, delay=2.0)
+        web.force_func = force_func
+
         recordings, targets = record_goals_and_samples_for_point(web,
                                     point_to_vibrate,
                                     samples_per_recording=samples_per_recording,
@@ -184,7 +194,7 @@ def test_it_out(
 
     # 
     stacked_recordings = np.stack(ALL_RECORDINGS)
-    stacked_targets = np.stack(ALL_TARGETS)
+    stacked_targets = np.stack(ALL_TARGETS).astype(np.float32)
     return stacked_recordings, stacked_targets
     # return ALL_RECORDINGS, ALL_TARGETS
     # recordings = []
@@ -195,20 +205,44 @@ def test_it_out(
     # record_goals_and_samples_for_point(web, )
     print('goodbye')
 
-def write_data(inputs, targets, target_directory, config):
+def write_data(inputs, targets, target_directory, config={}, overwrite=False):
+
+    path_to_config = os.path.join(target_directory, "config.json")
+    path_to_data = os.path.join(target_directory, "data.pkl")
+
+    if not overwrite and os.path.exists(path_to_data):
+        print("Going to exit early, because it already exists.")
+        return
+
+
     dictionary = {
         'inputs': inputs,
         'targets': targets
     }
     
-    path = os.path.join(target_directory, "config.json")
-    with open(path, 'wb') as f:
-        pickle.dump(json.dumps(config))
+    print('writing config')
+    with open(path_to_config, 'w') as f:
+        f.write(json.dumps(config))
+
+    print('config written. writing data')
+    with open(path_to_data, 'wb') as f:
+        pickle.dump(dictionary, f)
+    print('written')
+    
 
 
 if __name__ == '__main__':
     # pass
     # all_recordings, all_targets = test_it_out()
-    all_recordings, all_targets = test_it_out(samples_per_recording=10, num_recordings=2, start_recording_at=1.0, step_size=0.01)
-    import ipdb; ipdb.set_trace()
+    # This could be annoying, because the writing maybe won't happen after a long training run. Oh well.
+    config = {
+        'samples_per_recording': 100,
+        'num_recordings': 100,
+        'start_recording_at': 5.0,
+        'step_size': 0.0002,
+    }
+    
+    all_recordings, all_targets = test_it_out(**config)
+    write_data(all_recordings, all_targets, target_directory="./data/locating/", config=config, overwrite=False)
+
     print('goodbye for real...')
