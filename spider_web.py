@@ -61,7 +61,7 @@ class Node(object):
                 self.acc -= (self.vel * self.damping_coefficient)
             self.vel += (self.acc * timestep)
             self.loc += (self.vel * timestep)
-        self._zero_acc()
+        # self._zero_acc()
 
 
     def _zero_acc(self):
@@ -265,6 +265,9 @@ class Web(object):
         """
         self.num_steps += timestep
 
+        for p in self.point_list:
+            p._zero_acc()
+
         for e in self.edge_set:
             e.update_point_forces()
 
@@ -342,6 +345,8 @@ class Spider(object):
 
     def record_gather_points(self):
         for p in self.gather_points:
+            # print("p vel: {}".format(p.vel))
+            # print("p acc: {}".format(p.acc))
             self.gather_points[p][0].append(np.copy(p.loc))
             self.gather_points[p][1].append(np.copy(p.vel))
             self.gather_points[p][2].append(np.copy(p.acc))
@@ -379,6 +384,7 @@ class Spider(object):
         without_loc = values_np[:,1:,:,:]
         time_series_last = without_loc.transpose(0,1,3,2) # Switch the last two dimensions.
         flattened = np.reshape(time_series_last, (24, recording_size))
+
         if not squash_to_energy:
             return flattened
 
@@ -390,6 +396,7 @@ class Spider(object):
         new_array = np.empty((25,), np.float32)
         new_array[0:24] = flattened_energy
         new_array[24] = self.current_point.distance_from_center #That's the last one. Zero indexing...
+
         return new_array
 
 
