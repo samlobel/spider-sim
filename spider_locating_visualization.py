@@ -38,10 +38,11 @@ reversed_direction_map = OrderedDict([ (t[1], t[0]) for t in direction_map.items
 #     return point_vals
 
 class MPLWebDisplayWithSpider(MPLWebDisplay):
-    def __init__(self, web, spider, **kwargs):
+    def __init__(self, web, spider, oscillating_point=None, **kwargs):
         print('huzzah!')
         print(kwargs)
         self.spider = spider
+        self.oscillating_point = oscillating_point
         super().__init__(web, **kwargs)
 
     # def set_up_line_drawings(self):
@@ -65,21 +66,28 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
     def draw_web(self, frame, step=True):
         # self.ax.clear()
 
-        if hasattr(self, 'spider_guess_draw'):
+        if hasattr(self, 'spider_loc_draw'):
             try:
-                self.spider_guess_draw.remove()
+                print("Removing spider_loc_draw ")
+                self.spider_loc_draw.remove()
+                print("spider_loc_draw removed")
             except:
                 pass
+        # if hasattr(self, 'spider_guess_draw'):
+        #     try:
+        #         self.spider_guess_draw.remove()
+        #     except:
+        #         pass
         if hasattr(self, 'oscillating_point_draw'):
             try:
                 self.oscillating_point_draw.remove()
             except:
                 pass
 
-        if hasattr(self, 'center_draw'):
-            self.center_draw.remove()
-        if hasattr(self, 'leg_draw'):
-            self.leg_draw.remove()
+        # if hasattr(self, 'center_draw'):
+        #     self.center_draw.remove()
+        # if hasattr(self, 'leg_draw'):
+        #     self.leg_draw.remove()
 
         start_time = time.time()
         # print("Draw lines without blit")
@@ -89,13 +97,23 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
         #     asdf = self.ax.lines.pop(i)
         #     l.remove()
 
+        xs, ys, zs = [np.asarray([v]) for v in self.spider.current_point.loc]
+        print("Should be drawing ")
+        self.spider_loc_draw = self.ax.scatter(xs, ys, zs, color='magenta', linewidth=10, depthshade=False)
+
+
+        # if hasattr(self, 'spider_loc'):
+        #     xs, ys, zs = [np.asarray([v]) for v in self.spider_guess.loc]
+        #     self.spider_guess_draw = self.ax.scatter(xs, ys, zs, color='magenta', linewidth=10, depthshade=False)
+
+
         for e in self.edges:
             zipped = list(zip(e.p1.loc, e.p2.loc))
             self.ax.plot(*zipped, color='cyan')
 
-        if hasattr(self, 'spider_guess'):
-            xs, ys, zs = [np.asarray([v]) for v in self.spider_guess.loc]
-            self.spider_guess_draw = self.ax.scatter(xs, ys, zs, color='magenta', linewidth=10, depthshade=False)
+        # if hasattr(self, 'spider_guess'):
+        #     xs, ys, zs = [np.asarray([v]) for v in self.spider_guess.loc]
+        #     self.spider_guess_draw = self.ax.scatter(xs, ys, zs, color='magenta', linewidth=10, depthshade=False)
 
         if hasattr(self, 'oscillating_point'):
             xs, ys, zs = [np.asarray([v]) for v in self.oscillating_point.loc]
@@ -271,7 +289,17 @@ if __name__ == '__main__':
 
     spider = Spider(web, web.center_point)
     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
-    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, step_size=0.002, blit=False, start_drawing_at=3.0)
+
+    import random
+    force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point]
+    oscillating_point = random.choice(force_func_candidates)
+    force_func = web_zoo.random_oscillate_point_one_dimension(oscillating_point, [0,0,1.0], max_force=250.0, delay=3.0)
+    web.force_func = force_func
+
+
+
+    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, step_size=0.002, blit=False, start_drawing_at=3.0, oscillating_point=oscillating_point)
+    # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, step_size=0.002, blit=False, start_drawing_at=0.1)
 
     # gather_points = [spider.current_point.radial_before,
     #                  spider.current_point.radial_after,
@@ -282,11 +310,6 @@ if __name__ == '__main__':
 
     # list_of_off_center_points = [getattr(spider.current_point, direction).radial_after.radial_after.radial_after for direction in direction_map.keys()]
 
-    import random
-    force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point]
-    oscillating_point = random.choice(force_func_candidates)
-    force_func = web_zoo.random_oscillate_point_one_dimension(oscillating_point, [0,0,1.0], max_force=250.0, delay=3.0)
-    web.force_func = force_func
 
 
     # off_center_point = list_of_off_center_points[0]
@@ -299,6 +322,9 @@ if __name__ == '__main__':
     while wd.web.num_steps < wd.start_drawing_at:
         wd.web.step(wd.step_size)
     print('got to drawing start point')
+
+
+    SUCCESS=False
 
     # off_center_point = spider.current_point.radial_before.radial_after.radial_after.radial_after #This is fine for now.
     # off_center_point = spider.current_point.radial_after.radial_after.radial_after.radial_after #This is fine for now.
@@ -315,7 +341,25 @@ if __name__ == '__main__':
         samples_ph = tf.placeholder(dtype=tf.float32, shape=[None, 25])
         targets_ph = tf.placeholder(dtype=tf.float32, shape=[None])
         # model = SpiderModel(samples=samples_ph, targets=targets_ph) #THIS WORKS!
-        model = SpiderLocator(samples=samples_ph, targets=targets_ph) #This works?!
+
+        MEAN_DATA = np.asarray([
+            4.4874486e-02, 4.5664940e-02, 8.3224371e-02, 1.6056228e+00, 1.6082847e+00,
+            1.1395665e+03, 4.4821296e-02, 4.5671549e-02, 1.4073811e-02, 1.3133851e+03,
+            1.3382377e+03, 2.0117255e+02, 4.7401603e-02, 4.8398234e-02, 1.6391309e-02,
+            1.8579895e+00, 1.9230013e+00, 2.0557390e+02, 4.7273219e-02, 4.8525523e-02, 
+            1.6552730e-02, 1.8577598e+00, 1.9231324e+00, 2.0168808e+02, 4.9615213e-01
+        ])
+
+        VARIANCE_DATA = np.asarray([
+            5.0566737e-03, 5.1953350e-03, 3.0809554e-01, 8.8558588e+00, 8.9578514e+00,
+            4.6601388e+07, 5.0339620e-03, 5.1828744e-03, 3.2287095e-02, 1.4097924e+07,
+            1.4427968e+07, 4.4046120e+06, 4.9797399e-03, 5.0399355e-03, 3.4936607e-02,
+            9.3696833e+00, 9.7159138e+00, 4.4643995e+06, 4.9802926e-03, 5.0624828e-03,
+            3.5007007e-02, 9.4073076e+00, 9.6957226e+00, 4.3708295e+06, 6.1335776e-02
+        ])
+
+
+        model = SpiderLocator(samples=samples_ph, targets=targets_ph, mean_samples=MEAN_DATA, variance_samples=VARIANCE_DATA) #This works?!
         model.saver.restore(sess, 'checkpoints/locator/locate_prey_model')
 
 
@@ -324,7 +368,7 @@ if __name__ == '__main__':
 
         FFMpegWriter = animation.writers['ffmpeg']
         writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
-        with writer.saving(wd.fig, "spider_guessing.mp4", 100):
+        with writer.saving(wd.fig, "spider_guessing_locating.mp4", 100):
             number_of_guesses = 0
             # SAMPLES = []
             num_steps = 0
@@ -345,32 +389,48 @@ if __name__ == '__main__':
 
 
 
-            for _ in range(500):
+            for _ in range(3000):
                 # Then, get it vibrating.
                 wd.web.step(wd.step_size)
                 num_steps += 1
                 if num_steps % 25 == 0:
-                    print("Drawing Frame Number {}".format(num_steps / 25))
+                    print("Drawing Frame Number {} from inside wait stage".format(num_steps / 25))
                     wd.draw_web(num_steps / 25)
                     writer.grab_frame()
 
-            for _ in range(500):
+            for __ in range(2000):
                 wd.web.step(wd.step_size)
                 spider.record_gather_points()
                 if spider.number_of_gathered_samples() % recording_size == 0:
-                    print("Changing direction!")
-                    vectorized = spider.vectorize_gather_point_dict(recording_size=recording_size, squash_to_energy=True, include_radial_distance=True)
-                    spider_input = np.asarray([vectorized])
-                    prediction = sess.run(model.prediction, feed_dict={samples_ph: spider_input})[0]
-                    print(prediction)
-                    print("eventually we'll actually move this")
+                    if not SUCCESS:
+                        print("Changing direction!")
+                        vectorized = spider.vectorize_gather_point_dict(recording_size=recording_size, squash_to_energy=True, include_radial_distance=True)
+                        spider_input = np.asarray([vectorized])
+                        prediction = sess.run(model.prediction, feed_dict={samples_ph: spider_input})[0]
+                        print(prediction)
+                        direction = reversed_direction_map[prediction]
+                        print(direction)
+                        print("OLD COORDINATES WERE: {}".format(spider.current_point.loc))
+                        spider.move(direction)
+                        print("NEW COORDINATES ARE: {}".format(spider.current_point.loc))
+                        print("eventually we'll actually move this")
+                        if spider.current_point == oscillating_point:
+                            print("Success! huzzah!")
+                            SUCCESS=True
+                    else:
+                        print("SUCCESS SO WE STAY PUT...")
+
+                    spider.reset_gather_points()
+                
 
                 num_steps += 1
                 if num_steps % 25 == 0:
-                    print("Drawing Frame Number {}".format(num_steps / 25))
-                
+                    print("Drawing Frame Number {} from after choice stage".format(num_steps / 25))
+                    wd.draw_web(num_steps / 25)
+                    writer.grab_frame()
 
-                pass
+
+                # pass
 
                 # for guess in range(5):
                 #     # Then, make 3 guesses.
@@ -393,25 +453,25 @@ if __name__ == '__main__':
 
                 # Then, stop the force.
                 # if hasattr(web, 'force_func'):
-                #     del web.force_func
-                web.force_func = None
-                # self.
-                if hasattr(wd, 'oscillating_point'):
-                    del wd.oscillating_point
-                if hasattr(wd, 'spider_guess'):
-                    del wd.spider_guess
+                # #     del web.force_func
+                # web.force_func = None
+                # # self.
+                # if hasattr(wd, 'oscillating_point'):
+                #     del wd.oscillating_point
+                # if hasattr(wd, 'spider_guess'):
+                #     del wd.spider_guess
 
-                # Then, let it calm down for a bit
-                for _ in range(500):
-                    wd.web.step(wd.step_size)
-                    num_steps += 1
-                    if num_steps % 25 == 0:
-                        print("Drawing Frame Number {}".format(num_steps / 25))
-                        wd.draw_web(num_steps / 25)
-                        writer.grab_frame()
+                # # Then, let it calm down for a bit
+                # for _ in range(500):
+                #     wd.web.step(wd.step_size)
+                #     num_steps += 1
+                #     if num_steps % 25 == 0:
+                #         print("Drawing Frame Number {}".format(num_steps / 25))
+                #         wd.draw_web(num_steps / 25)
+                #         writer.grab_frame()
 
-                continue
-                print("Shouldn't get here!")
+                # continue
+                # print("Shouldn't get here!")
 
             # for frame in range(100):
             #     for _ in range(wd.steps_per_frame):
