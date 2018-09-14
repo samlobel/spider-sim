@@ -4,7 +4,9 @@ import json
 from mpl_visualization import  MPLWebDisplay
 from spider_web import Spider
 from record_web_data import morph_gather_points_dict_to_something_useable, direction_map
-from learning_model import SpiderModel
+from record_data_for_spider_locating import assign_each_point_in_web_a_radial_fraction
+# from learning_model import SpiderModel
+from locating_learning_model import SpiderLocator
 
 import numpy as np
 import tensorflow as tf
@@ -54,10 +56,10 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
     #     leg_xs, leg_ys, leg_zs = zip(*leg_locs)
     #     self.spider_legs_draw = self.ax.scatter(leg_xs, leg_ys, leg_zs, color="black", linewidth=2)
 
-    def assign_guess(self, guess_direction):
-        guess_attribute = reversed_direction_map[guess_direction]
-        guess_point = getattr(self.spider.current_point, guess_attribute)
-        self.spider_guess = guess_point
+    # def assign_guess(self, guess_direction):
+    #     guess_attribute = reversed_direction_map[guess_direction]
+    #     guess_point = getattr(self.spider.current_point, guess_attribute)
+    #     self.spider_guess = guess_point
 
 
     def draw_web(self, frame, step=True):
@@ -162,47 +164,47 @@ class MPLWebDisplayWithSpider(MPLWebDisplay):
     #             writer.grab_frame()
 
 
-def initialize_wd(config, direction):
-    exit("Not actually using this :(")
-    assert direction in direction_map.keys()
+# def initialize_wd(config, direction):
+#     exit("Not actually using this :(")
+#     assert direction in direction_map.keys()
 
-    web = web_zoo.radial_web(radius=radius,
-                             num_radial=num_radial,
-                             num_azimuthal=num_azimuthal,
-                             stiffness_radial=stiffness_radial,
-                             tension_radial=tension_radial,
-                             stiffness_azimuthal=stiffness_azimuthal,
-                             tension_azimuthal=tension_azimuthal,
-                             damping_coefficient=damping_coefficient,
-                             edge_type=edge_type,
-                             num_segments_per_radial=num_segments_per_radial,
-                             num_segments_per_azimuthal=num_segments_per_azimuthal,
-                            )
+#     web = web_zoo.radial_web(radius=radius,
+#                              num_radial=num_radial,
+#                              num_azimuthal=num_azimuthal,
+#                              stiffness_radial=stiffness_radial,
+#                              tension_radial=tension_radial,
+#                              stiffness_azimuthal=stiffness_azimuthal,
+#                              tension_azimuthal=tension_azimuthal,
+#                              damping_coefficient=damping_coefficient,
+#                              edge_type=edge_type,
+#                              num_segments_per_radial=num_segments_per_radial,
+#                              num_segments_per_azimuthal=num_segments_per_azimuthal,
+#                             )
 
-    spider = Spider(web, web.center_point)
-    # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
-    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=3.0)
+#     spider = Spider(web, web.center_point)
+#     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
+#     wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=3.0)
 
-    gather_points = [spider.current_point.radial_before,
-                     spider.current_point.radial_after,
-                     spider.current_point.azimuthal_before,
-                     spider.current_point.azimuthal_after]
+#     gather_points = [spider.current_point.radial_before,
+#                      spider.current_point.radial_after,
+#                      spider.current_point.azimuthal_before,
+#                      spider.current_point.azimuthal_after]
 
-    web.set_gather_points(gather_points)
+#     web.set_gather_points(gather_points)
 
-    off_center_point = getattr(spider.current_point, direction).radial_after.radial_after.radial_after #Fetches based on direction.
+#     off_center_point = getattr(spider.current_point, direction).radial_after.radial_after.radial_after #Fetches based on direction.
 
-    # off_center_point = spider.current_point.radial_before.radial_after.radial_after.radial_after #This is fine for now.
-    # off_center_point = spider.current_point.radial_after.radial_after.radial_after.radial_after #This is fine for now.
-    # off_center_point = spider.current_point.azimuthal_before.radial_after.radial_after.radial_after #This is fine for now.
-    # off_center_point = spider.current_point.azimuthal_after.radial_after.radial_after.radial_after #This is fine for now.
+#     # off_center_point = spider.current_point.radial_before.radial_after.radial_after.radial_after #This is fine for now.
+#     # off_center_point = spider.current_point.radial_after.radial_after.radial_after.radial_after #This is fine for now.
+#     # off_center_point = spider.current_point.azimuthal_before.radial_after.radial_after.radial_after #This is fine for now.
+#     # off_center_point = spider.current_point.azimuthal_after.radial_after.radial_after.radial_after #This is fine for now.
 
-    force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=2.0)
-    web.force_func = force_func
+#     force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=2.0)
+#     web.force_func = force_func
 
-    wd.oscillating_point = off_center_point
+#     wd.oscillating_point = off_center_point
 
-    return wd
+#     return wd
 
 if __name__ == '__main__':
     import web_zoo
@@ -223,33 +225,34 @@ if __name__ == '__main__':
 
     step_size = 0.002
     start_recording_at = 3.0
-    recording_size = 500 #How many samples to record.
+    # recording_size = 500 #How many samples to record.
+    recording_size=100
     # recording_size=50
-    CONFIG = {
-        'radius': radius,
-        'num_radial': num_radial,
-        'num_azimuthal': num_azimuthal,
-        'stiffness_radial': stiffness_radial,
-        'tension_radial': tension_radial,
-        'stiffness_azimuthal': stiffness_azimuthal,
-        'tension_azimuthal': tension_azimuthal,
-        'damping_coefficient': damping_coefficient,
-        'edge_type':edge_type,
-        'num_segments_per_radial':num_segments_per_radial,
-        'num_segments_per_azimuthal':num_segments_per_azimuthal,
-        'recording_size':recording_size,
-        'start_recording_at':start_recording_at,
-    }
+    # CONFIG = {
+    #     'radius': radius,
+    #     'num_radial': num_radial,
+    #     'num_azimuthal': num_azimuthal,
+    #     'stiffness_radial': stiffness_radial,
+    #     'tension_radial': tension_radial,
+    #     'stiffness_azimuthal': stiffness_azimuthal,
+    #     'tension_azimuthal': tension_azimuthal,
+    #     'damping_coefficient': damping_coefficient,
+    #     'edge_type':edge_type,
+    #     'num_segments_per_radial':num_segments_per_radial,
+    #     'num_segments_per_azimuthal':num_segments_per_azimuthal,
+    #     'recording_size':recording_size,
+    #     'start_recording_at':start_recording_at,
+    # }
 
-    with open('data/config.json', 'r') as f:
-        saved_config = json.loads(f.read())
+    # with open('data/config.json', 'r') as f:
+    #     saved_config = json.loads(f.read())
 
-    assert CONFIG == saved_config
+    # assert CONFIG == saved_config
     #
 
 
-    print("\n\n\nBAD HACK COMING\n\n\n")
-    damping_coefficient = 1.0
+    # print("\n\n\nBAD HACK COMING\n\n\n")
+    # damping_coefficient = 1.0
 
     web = web_zoo.radial_web(radius=radius,
                              num_radial=num_radial,
@@ -264,18 +267,27 @@ if __name__ == '__main__':
                              num_segments_per_azimuthal=num_segments_per_azimuthal,
                             )
 
+    assign_each_point_in_web_a_radial_fraction(web, num_azimuthal)
+
     spider = Spider(web, web.center_point)
     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
-    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=3.0)
+    wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, step_size=0.002, blit=False, start_drawing_at=3.0)
 
-    gather_points = [spider.current_point.radial_before,
-                     spider.current_point.radial_after,
-                     spider.current_point.azimuthal_before,
-                     spider.current_point.azimuthal_after]
+    # gather_points = [spider.current_point.radial_before,
+    #                  spider.current_point.radial_after,
+    #                  spider.current_point.azimuthal_before,
+    #                  spider.current_point.azimuthal_after]
 
-    web.set_gather_points(gather_points)
+    # web.set_gather_points(gather_points)
 
-    list_of_off_center_points = [getattr(spider.current_point, direction).radial_after.radial_after.radial_after for direction in direction_map.keys()]
+    # list_of_off_center_points = [getattr(spider.current_point, direction).radial_after.radial_after.radial_after for direction in direction_map.keys()]
+
+    import random
+    force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point]
+    oscillating_point = random.choice(force_func_candidates)
+    force_func = web_zoo.random_oscillate_point_one_dimension(oscillating_point, [0,0,1.0], max_force=250.0, delay=3.0)
+    web.force_func = force_func
+
 
     # off_center_point = list_of_off_center_points[0]
     # force_func = web_zoo.random_oscillate_point_one_dimension(off_center_point, [0,0,1.0], max_force=250.0, delay=2.0)
@@ -283,8 +295,10 @@ if __name__ == '__main__':
 
     # wd.oscillating_point = off_center_point
 
+    print('getting to drawing start point')
     while wd.web.num_steps < wd.start_drawing_at:
         wd.web.step(wd.step_size)
+    print('got to drawing start point')
 
     # off_center_point = spider.current_point.radial_before.radial_after.radial_after.radial_after #This is fine for now.
     # off_center_point = spider.current_point.radial_after.radial_after.radial_after.radial_after #This is fine for now.
@@ -298,11 +312,11 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
 
-        samples_ph = tf.placeholder(dtype=tf.float32, shape=[None, 24, 500])
-        targets_ph = tf.placeholder(dtype=tf.int64, shape=[None])
-        model = SpiderModel(samples=samples_ph, targets=targets_ph) #THIS WORKS!
-
-        model.saver.restore(sess, 'checkpoints/model')
+        samples_ph = tf.placeholder(dtype=tf.float32, shape=[None, 25])
+        targets_ph = tf.placeholder(dtype=tf.float32, shape=[None])
+        # model = SpiderModel(samples=samples_ph, targets=targets_ph) #THIS WORKS!
+        model = SpiderLocator(samples=samples_ph, targets=targets_ph) #This works?!
+        model.saver.restore(sess, 'checkpoints/locator/locate_prey_model')
 
 
         # while wd.web.num_steps < wd.start_drawing_at:
@@ -316,46 +330,66 @@ if __name__ == '__main__':
             num_steps = 0
 
             # For each point:
-            for point in list_of_off_center_points:
+            # for point in list_of_off_center_points:
             # for point in list_of_off_center_points[0:1]:
 
                 # First, clear the guess if its there.
-                if hasattr(wd, 'spider_guess'):
-                    print("deleting spider_guess")
-                    del wd.spider_guess
+                # if hasattr(wd, 'spider_guess'):
+                #     print("deleting spider_guess")
+                #     del wd.spider_guess
 
                 # First, set the force function.
-                force_func = web_zoo.random_oscillate_point_one_dimension(point, [0,0,1.0], max_force=250.0, delay=0.0)
-                web.force_func = force_func
-                wd.oscillating_point = point
+            # force_func = web_zoo.random_oscillate_point_one_dimension(point, [0,0,1.0], max_force=250.0, delay=0.0)
+            # web.force_func = force_func
+            # wd.oscillating_point = point
 
-                for _ in range(500):
-                    # Then, get it vibrating.
-                    wd.web.step(wd.step_size)
-                    num_steps += 1
-                    if num_steps % 25 == 0:
-                        print("Drawing Frame Number {}".format(num_steps / 25))
-                        wd.draw_web(num_steps / 25)
-                        writer.grab_frame()
 
-                for guess in range(5):
-                    # Then, make 3 guesses.
-                    web.reset_gather_points()
-                    for _ in range(500):
-                        wd.web.step(wd.step_size)
-                        web.record_gather_points()
-                        num_steps += 1
-                        if num_steps % 25 == 0:
-                            print("Drawing Frame Number {}".format(num_steps / 25))
-                            wd.draw_web(num_steps / 25)
-                            writer.grab_frame()
-                    # Mkae guess for real.
-                    sample = morph_gather_points_dict_to_something_useable(web.gather_points)
-                    model_input = np.asarray([sample])
-                    spider_guess = sess.run(model.best_guess, feed_dict={model.is_training: False, model.samples: model_input})[0]
-                    number_of_guesses += 1
-                    # print("SPIDER GUESS Number {}: {}".format(number_of_guesses, spider_guess))
-                    wd.assign_guess(spider_guess)
+
+            for _ in range(500):
+                # Then, get it vibrating.
+                wd.web.step(wd.step_size)
+                num_steps += 1
+                if num_steps % 25 == 0:
+                    print("Drawing Frame Number {}".format(num_steps / 25))
+                    wd.draw_web(num_steps / 25)
+                    writer.grab_frame()
+
+            for _ in range(500):
+                wd.web.step(wd.step_size)
+                spider.record_gather_points()
+                if spider.number_of_gathered_samples() % recording_size == 0:
+                    print("Changing direction!")
+                    vectorized = spider.vectorize_gather_point_dict(recording_size=recording_size, squash_to_energy=True, include_radial_distance=True)
+                    spider_input = np.asarray([vectorized])
+                    prediction = sess.run(model.prediction, feed_dict={samples_ph: spider_input})[0]
+                    print(prediction)
+                    print("eventually we'll actually move this")
+
+                num_steps += 1
+                if num_steps % 25 == 0:
+                    print("Drawing Frame Number {}".format(num_steps / 25))
+                
+
+                pass
+
+                # for guess in range(5):
+                #     # Then, make 3 guesses.
+                #     web.reset_gather_points()
+                #     for _ in range(500):
+                #         # wd.web.step(wd.step_size)wd
+                #         web.record_gather_points()
+                #         num_steps += 1
+                #         if num_steps % 25 == 0:
+                #             print("Drawing Frame Number {}".format(num_steps / 25))
+                #             wd.draw_web(num_steps / 25)
+                #             writer.grab_frame()
+                #     # Mkae guess for real.
+                #     sample = morph_gather_points_dict_to_something_useable(web.gather_points)
+                #     model_input = np.asarray([sample])
+                #     spider_guess = sess.run(model.best_guess, feed_dict={model.is_training: False, model.samples: model_input})[0]
+                #     number_of_guesses += 1
+                #     # print("SPIDER GUESS Number {}: {}".format(number_of_guesses, spider_guess))
+                #     wd.assign_guess(spider_guess)
 
                 # Then, stop the force.
                 # if hasattr(web, 'force_func'):
