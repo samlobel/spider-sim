@@ -291,8 +291,9 @@ if __name__ == '__main__':
     # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
 
     import random
-    force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point]
+    force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point and hasattr(p, 'intersection') and p.intersection == True]
     oscillating_point = random.choice(force_func_candidates)
+    print("Oscillating point loc is {}".format(oscillating_point.loc))
     force_func = web_zoo.random_oscillate_point_one_dimension(oscillating_point, [0,0,1.0], max_force=250.0, delay=3.0)
     web.force_func = force_func
 
