@@ -1,3 +1,5 @@
+# exit("Just so I don't run int accidentally...")
+
 from learning_model import SpiderModel
 from spider_data import get_train_data, get_test_data
 
@@ -26,6 +28,7 @@ next_element = iterator.get_next()
 model = SpiderModel(samples=next_element[0],
                     targets=next_element[1],
                     lr=1e-4,
+                    scale_conv_regularizer=1e-3
 )
 
 
@@ -35,7 +38,7 @@ testing_init_op = iterator.make_initializer(test_dataset)
 init_op = tf.global_variables_initializer()
 
 # log_dir = './logging/{}'.format(DATA_SUBDIR, arch_str)
-log_dir = "./logging/logging4"
+log_dir = "./logging/logging5"
 # if os.path.exists(log_dir):
 #     shutil.rmtree(log_dir)
 print("log directory: %s" % log_dir)
@@ -60,4 +63,4 @@ with tf.Session() as sess:
         summary = sess.run(model.testing_summaries, feed_dict={model.is_training: False})
         summary_writer.add_summary(summary, global_step=epoch)
 
-    model.saver.save(sess, 'checkpoints/model')
+    model.saver.save(sess, 'checkpoints/model2')

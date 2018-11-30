@@ -253,6 +253,7 @@ if __name__ == '__main__':
         model.saver.restore(sess, 'checkpoints/locator/locate_prey_model')
 
         for SIMULATION_NUMBER in range(1,10):
+        # for SIMULATION_NUMBER in range(1,2):
             print("\n\n\nSIMULATION NUMBER {}\n\n".format(SIMULATION_NUMBER))
             import web_zoo
 
@@ -316,8 +317,6 @@ if __name__ == '__main__':
 
             assign_each_point_in_web_a_radial_fraction(web, num_azimuthal)
 
-            spider = Spider(web, web.center_point)
-            # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
 
             import random
             force_func_candidates = [p for p in web.point_list if not p.pinned and p != web.center_point and hasattr(p, 'intersection') and p.intersection == True]
@@ -326,6 +325,10 @@ if __name__ == '__main__':
             force_func = web_zoo.random_oscillate_point_one_dimension(oscillating_point, [0,0,1.0], max_force=250.0, delay=3.0)
             web.force_func = force_func
 
+            new_points = [p for p in force_func_candidates if p != oscillating_point]
+            spider_point = random.choice(new_points)
+            spider = Spider(web, spider_point)
+            # wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, frames_to_write=20, step_size=0.002, blit=False, start_drawing_at=0.0)
 
 
             wd = MPLWebDisplayWithSpider(web, spider, steps_per_frame=25, step_size=0.002, blit=False, start_drawing_at=3.0, oscillating_point=oscillating_point)
@@ -373,7 +376,7 @@ if __name__ == '__main__':
 
             FFMpegWriter = animation.writers['ffmpeg']
             writer = FFMpegWriter(fps=15, metadata=dict(artist='Sam Lobel'), bitrate=1000)
-            with writer.saving(wd.fig, "spider_guessing_locating_{}.mp4".format(SIMULATION_NUMBER), 100):
+            with writer.saving(wd.fig, "LOCATING_VIDEOS/FROM_OTHER_POINTS/spider_guessing_locating_{}.mp4".format(SIMULATION_NUMBER), 100):
                 number_of_guesses = 0
                 # SAMPLES = []
                 num_steps = 0
